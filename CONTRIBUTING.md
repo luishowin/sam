@@ -59,6 +59,8 @@ Once implementation begins:
 
 ## Licence
 
-Sam has no chosen licence. By contributing, you agree that your contribution may be
-distributed under whatever licence is eventually selected. Do not contribute code you cannot
-license on those terms.
+Sam is licensed under the MIT Licence; see [`LICENSE`](../LICENSE). By
+contributing, you agree that your contribution is licensed under the same terms.
+
+Dependencies and third-party components keep their own licences. Do not
+contribute code you cannot license under MIT.

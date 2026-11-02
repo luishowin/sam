@@ -113,7 +113,7 @@ model-routing responsibility.
 
 These must be settled before or during implementation:
 
-1. **Licence.** No licence has been chosen. This blocks redistribution.
+1. ~~**Licence.**~~ **Settled 2026-11-03: MIT.** See [`LICENSE`](LICENSE).
 2. **Local IPC mechanism and API versioning.**
 3. **Catalogue ownership and invalidation events.**
 4. **Which result actions Sam may offer directly.**

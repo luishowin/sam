@@ -403,9 +403,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-**Undecided.** No licence has been chosen for Sam. This is an open decision that must be made
-before any implementation is published or redistributed. Nothing in this repository should be
-treated as granting a licence.
+**MIT.** See [LICENSE](LICENSE).
+
+Sam's own code and documentation are MIT-licensed. Dependencies and third-party
+components keep their own licences. `essential-os` and `ida` are separately
+MIT-licensed projects.
 
 ## Related
 
