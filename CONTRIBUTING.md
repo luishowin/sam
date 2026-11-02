@@ -37,7 +37,8 @@ Every contribution must respect the product boundary:
 - Any runtime call to a language model, web service or cloud provider.
 - Telemetry, profiling or personalisation.
 - A vector database introduced without measurements.
-- A licence assumption. Licensing is undecided.
+- A licence assumption. Sam is MIT; do not introduce differently licensed code
+  without discussion.
 
 ## Pull request expectations
 
