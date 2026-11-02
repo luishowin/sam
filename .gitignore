@@ -1,0 +1,40 @@
+# Build outputs
+target/
+build/
+dist/
+out/
+
+# Dependency directories
+node_modules/
+vendor/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Local models and embedding artifacts
+models/
+*.gguf
+*.onnx
+*.bin
+*.safetensors
+
+# Local indexes, caches and databases
+*.sqlite
+*.sqlite3
+*.db
+indexes/
+cache/
+.cache/
+
+# Logs and local state
+*.log
+logs/
+.local/
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
