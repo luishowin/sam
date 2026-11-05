@@ -13,6 +13,7 @@ data_dir="${XDG_DATA_HOME:-$HOME/.local/share}"
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 files=(
   "$bin_dir/sam"
+  "$bin_dir/sam-voice"
   "$data_dir/applications/$app_id.desktop"
   "$data_dir/dbus-1/services/$app_id.service"
   "$unit_dir/$app_id.service"
@@ -39,6 +40,7 @@ fi
 cargo build --release --locked
 
 install -Dm755 target/release/sam "$bin_dir/sam"
+install -Dm755 target/release/sam-voice "$bin_dir/sam-voice"
 sed "s|^Exec=sam|Exec=$bin_dir/sam|" "data/$app_id.desktop" \
   | install -Dm644 /dev/stdin "$data_dir/applications/$app_id.desktop"
 sed "s|@bindir@|$bin_dir|g" "data/dbus/$app_id.service" \

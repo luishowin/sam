@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 sam-core.workspace = true
 sam-linux.workspace = true
+sam-voice.workspace = true
 glib.workspace = true
 gio.workspace = true
 gtk.workspace = true

@@ -20,12 +20,15 @@ BuildRequires:  gcc
 BuildRequires:  pkgconfig(gtk4) >= 4.22
 BuildRequires:  pkgconfig(libadwaita-1) >= 1.9
 BuildRequires:  pkgconfig(glib-2.0) >= 2.84
+BuildRequires:  pkgconfig(alsa)
+BuildRequires:  openssl-devel
 BuildRequires:  libtinysparql
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  desktop-file-utils
 
 Requires:       glib2
 Requires:       wireplumber
+Requires:       libnotify
 Recommends:     localsearch
 Recommends:     ptyxis
 Recommends:     bluez
@@ -55,14 +58,15 @@ cat vendor-config.toml >> .cargo/config.toml
 grep -q '^version = "%{version}"$' Cargo.toml
 
 %build
-cargo build --release --locked --offline -p sam
+cargo build --release --locked --offline -p sam -p sam-voice
 
 %check
-cargo test --release --locked --offline -p sam-core -p sam-linux
+cargo test --release --locked --offline -p sam-core -p sam-linux -p sam-voice
 
 %install
 install -Dm0755 target/release/sam %{buildroot}%{_bindir}/sam
-strip %{buildroot}%{_bindir}/sam
+install -Dm0755 target/release/sam-voice %{buildroot}%{_bindir}/sam-voice
+strip %{buildroot}%{_bindir}/sam %{buildroot}%{_bindir}/sam-voice
 install -Dm0644 data/%{app_id}.desktop %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 install -d %{buildroot}%{_datadir}/dbus-1/services %{buildroot}%{_userunitdir}
 sed 's|@bindir@|%{_bindir}|g' data/dbus/%{app_id}.service \
@@ -81,8 +85,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 
 %files
 %license LICENSE
-%doc README.md docs/fedora-prototype.md docs/migration-from-ida.md
+%doc README.md docs/fedora-prototype.md docs/migration-from-ida.md docs/design/SPEECH_GUIDE.md
 %{_bindir}/sam
+%{_bindir}/sam-voice
 %{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/dbus-1/services/%{app_id}.service
 %{_userunitdir}/%{app_id}.service

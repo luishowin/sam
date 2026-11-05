@@ -17,6 +17,7 @@ use sam_core::rank::{Candidate, Kind};
 use sam_core::trouble::Trouble;
 use sam_linux::executor::Executor;
 use sam_linux::log;
+use sam_voice::{Event as VoiceEvent, VoiceEngine};
 
 use crate::row::Row;
 use crate::surface::{Shape, Surface};
@@ -53,7 +54,9 @@ pub struct Panel {
     generation: Cell<u64>,
     pending: RefCell<Option<(usize, Pending)>>,
     file_source: RefCell<Option<glib::SourceId>>,
-    snapshots: RefCell<Vec<gtk::Widget>>,
+    voice: Option<VoiceEngine>,
+    listening: Cell<bool>,
+    from_voice: Cell<bool>,
 }
 
 impl Panel {
@@ -125,6 +128,7 @@ impl Panel {
         frame.append(&card);
         window.set_content(Some(&frame));
 
+        let voice = VoiceEngine::spawn_default().ok();
         let panel = Rc::new(Panel {
             window: window.clone(),
             entry,
@@ -138,11 +142,16 @@ impl Panel {
             generation: Cell::new(0),
             pending: RefCell::new(None),
             file_source: RefCell::new(None),
-            snapshots: RefCell::new(Vec::new()),
+            voice,
+            listening: Cell::new(false),
+            from_voice: Cell::new(false),
         });
 
         let p = panel.clone();
         panel.entry.connect_changed(move |entry| {
+            if p.listening.get() && !p.from_voice.get() {
+                p.stop_listen();
+            }
             p.refresh(entry.text().to_string());
         });
 
@@ -170,6 +179,16 @@ impl Panel {
             p.hide("close");
             glib::Propagation::Stop
         });
+
+        // Speech events arrive on the worker thread; drain them on the main
+        // loop so the panel never blocks on model load or inference.
+        if panel.voice.is_some() {
+            let p = panel.clone();
+            glib::timeout_add_local(Duration::from_millis(50), move || {
+                p.poll_voice();
+                glib::ControlFlow::Continue
+            });
+        }
 
         panel
     }
@@ -225,12 +244,15 @@ impl Panel {
         }
 
         let results = self.world.search(&text);
-        let candidates = self.world.panel_rows(&results, ROWS * 2);
+        let mut candidates = self.world.panel_rows(&results, ROWS * 2);
         let query = results.query.files.clone();
 
         let strong = candidates
             .first()
             .is_some_and(|c| c.score >= 0.9 && matches!(c.kind, Kind::Info | Kind::Command | Kind::Calculation | Kind::Conversion | Kind::Site));
+        if strong {
+            candidates.retain(|c| c.kind != Kind::Search);
+        }
         self.render(candidates);
 
         // Files arrive after a short pause, unless a strong deterministic
@@ -389,7 +411,11 @@ impl Panel {
     fn key(self: &Rc<Self>, key: gdk::Key) -> glib::Propagation {
         match key {
             gdk::Key::Escape => {
-                self.hide("escape");
+                if self.listening.get() {
+                    self.cancel_listen();
+                } else {
+                    self.hide("escape");
+                }
                 glib::Propagation::Stop
             }
             gdk::Key::Return | gdk::Key::KP_Enter => {
@@ -432,15 +458,91 @@ impl Panel {
     // ---- speech ------------------------------------------------------------
 
     fn start_listen(self: &Rc<Self>) {
-        self.mic.add_css_class("listening");
-        self.footer.set_label("Listening… release to stop");
-        trace!("listen started");
+        let Some(voice) = &self.voice else {
+            self.footer
+                .set_label("Speech is unavailable — run `sam voice setup`");
+            return;
+        };
+        match voice.start() {
+            Ok(()) => {
+                self.listening.set(true);
+                self.mic.add_css_class("listening");
+                self.footer.set_label("Listening… release to stop");
+                trace!("listen started");
+            }
+            Err(e) => self.footer.set_label(&format!("Microphone: {e}")),
+        }
     }
 
     fn stop_listen(&self) {
+        if !self.listening.replace(false) {
+            return;
+        }
+        if let Some(voice) = &self.voice
+            && let Err(e) = voice.stop()
+        {
+            self.footer.set_label(&format!("Speech: {e}"));
+        }
         self.mic.remove_css_class("listening");
         if self.footer.text().starts_with("Listening") {
             self.footer.set_label("↑↓ choose · ↵ open · esc close");
+        }
+    }
+
+    fn cancel_listen(&self) {
+        if !self.listening.replace(false) {
+            return;
+        }
+        if let Some(voice) = &self.voice {
+            let _ = voice.cancel();
+        }
+        self.mic.remove_css_class("listening");
+        self.footer.set_label("↑↓ choose · ↵ open · esc close");
+    }
+
+    fn poll_voice(self: &Rc<Self>) {
+        let Some(voice) = &self.voice else {
+            return;
+        };
+        for event in voice.drain_events() {
+            match event {
+                VoiceEvent::ModelsLoading => {
+                    self.mic.set_tooltip_text(Some("Loading the local speech model…"));
+                }
+                VoiceEvent::ModelsReady => {
+                    self.mic
+                        .set_tooltip_text(Some("Hold to speak (local, offline)"));
+                }
+                VoiceEvent::Listening => {
+                    self.listening.set(true);
+                    self.mic.add_css_class("listening");
+                    self.footer.set_label("Listening… release to stop");
+                }
+                VoiceEvent::Partial(text) => {
+                    if !text.is_empty() {
+                        self.from_voice.set(true);
+                        self.entry.set_text(&text);
+                        self.entry.set_position(-1);
+                        self.from_voice.set(false);
+                    }
+                }
+                VoiceEvent::Final(text) => {
+                    if !text.is_empty() {
+                        self.from_voice.set(true);
+                        self.entry.set_text(&text);
+                        self.entry.set_position(-1);
+                        self.from_voice.set(false);
+                    }
+                    self.listening.set(false);
+                    self.mic.remove_css_class("listening");
+                    self.footer.set_label("↑↓ choose · ↵ open · esc close");
+                }
+                VoiceEvent::Failed(text) => {
+                    self.listening.set(false);
+                    self.mic.remove_css_class("listening");
+                    self.footer.set_label(&format!("Speech: {text}"));
+                }
+            }
         }
     }
 

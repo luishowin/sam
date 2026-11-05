@@ -103,6 +103,11 @@ fn install_archive_inner(
         });
     }
 
+    eprintln!(
+        "installing model to {}",
+        canonical_model_dir(models_root).display()
+    );
+
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()

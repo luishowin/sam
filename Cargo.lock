@@ -1821,6 +1821,7 @@ dependencies = [
  "libadwaita",
  "sam-core",
  "sam-linux",
+ "sam-voice",
 ]
 
 [[package]]
@@ -1857,8 +1858,6 @@ dependencies = [
  "log",
  "ort",
  "rubato",
- "serde",
- "serde_json",
  "sha2",
  "tar",
  "transcribe-rs",

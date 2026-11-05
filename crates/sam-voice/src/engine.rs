@@ -564,11 +564,20 @@ mod tests {
         })
         .unwrap();
 
-        // Drain the model failure so the worker has exited.
-        while engine.try_recv().is_some() {}
-        std::thread::sleep(Duration::from_millis(50));
-        while engine.try_recv().is_some() {}
-
-        assert!(matches!(engine.start(), Err(VoiceError::WorkerStopped)));
+        // Drain the model failure, then wait for the worker to drop the command
+        // receiver. This is the state the panel is in after a Failed event from
+        // a worker that cannot start at all.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            while engine.try_recv().is_some() {}
+            match engine.start() {
+                Err(VoiceError::WorkerStopped) => break,
+                Err(other) => panic!("unexpected error: {other}"),
+                Ok(()) if Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Ok(()) => panic!("worker did not stop within 5s"),
+            }
+        }
     }
 }

@@ -350,27 +350,44 @@ pub fn log(args: &[String]) -> ExitCode {
 }
 
 pub fn voice(args: &[String]) -> ExitCode {
-    let config = Config::load();
+    let root = sam_voice::default_models_root();
     match args.first().map(String::as_str) {
         None | Some("status") => {
-            let path = config.voice.model_path();
-            println!("engine:    Moonshine streaming (local, offline)");
-            println!("model:     {}", path.display());
-            println!("threads:   {}", config.voice.threads());
-            println!("model dir: {}", tilde(&sam_linux::config::models_dir()));
-            if path.is_dir() {
-                println!("state:     present");
+            let status = sam_voice::model_status_for_root(&root);
+            println!("engine:    Moonshine Small Streaming (local, offline)");
+            println!("models:    {}", root.display());
+            println!("model:     {}", status.dir().display());
+            if status.is_present() {
+                println!("state:     ready");
                 ExitCode::SUCCESS
             } else {
                 println!("state:     missing — run `sam voice setup`");
+                if !status.missing().is_empty() {
+                    println!("missing:   {}", status.missing().join(", "));
+                }
                 ExitCode::FAILURE
             }
         }
         Some("setup") => {
-            println!("Sam's speech model download is not wired yet.");
-            println!("Place the Moonshine streaming model in:");
-            println!("  {}", config.voice.model_path().display());
-            ExitCode::FAILURE
+            let archive = args
+                .iter()
+                .position(|a| a == "--archive")
+                .and_then(|i| args.get(i + 1))
+                .map(std::path::PathBuf::from);
+            let result = match archive {
+                Some(path) => sam_voice::install_archive(&path, &root),
+                None => sam_voice::download_and_install(&root),
+            };
+            match result {
+                Ok(outcome) => {
+                    println!("speech model ready at {}", outcome.dir().display());
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("sam voice setup: {e}");
+                    ExitCode::FAILURE
+                }
+            }
         }
         Some(other) => usage(&format!("voice: unknown command {other:?}")),
     }

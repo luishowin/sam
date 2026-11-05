@@ -223,7 +223,7 @@ pub fn install() -> Result<Report, SetupError> {
 
     let custom = gio::Settings::with_path(CUSTOM_SCHEMA, CUSTOM_PATH);
     let err = |e: glib::BoolError| SetupError(e.to_string());
-    custom.set_string("name", "SAM").map_err(err)?;
+    custom.set_string("name", "Sam").map_err(err)?;
     custom.set_string("command", &command()).map_err(err)?;
     custom.set_string("binding", BINDING).map_err(err)?;
     report.push(format!("{BINDING} → {}", command()));
