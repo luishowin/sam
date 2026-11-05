@@ -1,0 +1,14 @@
+[package]
+name = "sam-core"
+description = "SAM's platform-free core: intents, the action registry, policy, parsing and ranking"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# Nothing in here may reach the operating system. The list below is held to an
+# allowlist by tests/purity.rs — adding a dependency means changing §0 first.
+[dependencies]
+serde.workspace = true
+toml.workspace = true
+nucleo-matcher.workspace = true

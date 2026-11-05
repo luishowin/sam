@@ -1,0 +1,122 @@
+/* Sam is onyx: the mockup's black pill, #525252 edge and soft grey text. */
+window.sam-window {
+  background: none;
+}
+
+sam-surface {
+  color: #000000;
+}
+
+sam-surface > * {
+  color: #d9d9d9;
+}
+
+.sam-search {
+  padding: 0 14px 0 20px;
+}
+
+entry.sam-entry {
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  min-height: 40px;
+  padding: 0;
+  font-size: 18px;
+  color: #d9d9d9;
+}
+
+entry.sam-entry placeholder {
+  color: #747474;
+}
+
+entry.sam-entry selection {
+  background-color: alpha(#68b1ff, 0.35);
+}
+
+.sam-mic {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
+  color: #d9d9d9;
+}
+
+.sam-mic:hover {
+  background-color: alpha(currentColor, 0.08);
+}
+
+.sam-mic.listening {
+  color: #68b1ff;
+  background-color: alpha(#68b1ff, 0.12);
+}
+
+.sam-card-content {
+  background: none;
+}
+
+.sam-results {
+  background: none;
+  padding: 6px 8px 2px 8px;
+}
+
+.sam-results row.sam-row {
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+.sam-results row.sam-row:hover {
+  background-color: alpha(currentColor, 0.05);
+}
+
+.sam-results row.sam-row:selected {
+  background-color: alpha(#68b1ff, 0.22);
+  color: inherit;
+}
+
+.sam-results row.sam-row:selected:hover {
+  background-color: alpha(#68b1ff, 0.28);
+}
+
+.sam-results row.sam-confirm {
+  background-color: alpha(#f5c211, 0.16);
+}
+
+.sam-symbolic {
+  opacity: 0.8;
+}
+
+.sam-title {
+  font-weight: 600;
+}
+
+.sam-subtitle {
+  font-size: 0.85em;
+  opacity: 0.65;
+}
+
+.sam-kind {
+  font-size: 0.8em;
+  opacity: 0.5;
+}
+
+.sam-footer {
+  padding: 6px 18px 8px 18px;
+  font-size: 0.85em;
+  border-top: 1px solid alpha(currentColor, 0.08);
+  opacity: 0.75;
+}
+
+.sam-error {
+  color: var(--error-color);
+}
+
+.sam-warn {
+  color: var(--warning-color);
+  opacity: 1;
+}

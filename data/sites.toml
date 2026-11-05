@@ -1,0 +1,100 @@
+# Web shortcuts (§17), compiled into the binary as the grammar is.
+#
+# Each entry becomes a `url.open` row, matched by its name and its keywords
+# with the same scorer apps and places use (F19). "youtube" finds it, and so
+# does "open youtube", because `open {rest}` is already a mode (§6).
+#
+# SAM opens these in the default browser; it never fetches them itself (F5).
+# Every URL must be https, and the registry checks that too.
+#
+# This is a short list on purpose. It holds the places a person types often
+# enough to want a keystroke for, not a bookmark collection.
+
+[[site]]
+name = "YouTube"
+url = "https://www.youtube.com/"
+keywords = ["yt", "videos"]
+
+[[site]]
+name = "GitHub"
+url = "https://github.com/"
+keywords = ["gh", "git", "repositories"]
+
+[[site]]
+name = "Gmail"
+url = "https://mail.google.com/"
+keywords = ["mail", "email", "inbox"]
+
+[[site]]
+name = "Google Calendar"
+url = "https://calendar.google.com/"
+keywords = ["gcal", "agenda"]
+
+[[site]]
+name = "Google Drive"
+url = "https://drive.google.com/"
+keywords = ["gdrive"]
+
+[[site]]
+name = "Google Maps"
+url = "https://maps.google.com/"
+keywords = ["maps", "directions"]
+
+[[site]]
+name = "Google"
+url = "https://www.google.com/"
+keywords = ["search the web"]
+
+[[site]]
+name = "Wikipedia"
+url = "https://en.wikipedia.org/"
+keywords = ["wiki"]
+
+[[site]]
+name = "Stack Overflow"
+url = "https://stackoverflow.com/"
+keywords = ["so", "stackoverflow"]
+
+[[site]]
+name = "crates.io"
+url = "https://crates.io/"
+keywords = ["crates", "cargo"]
+
+[[site]]
+name = "docs.rs"
+url = "https://docs.rs/"
+keywords = ["docsrs", "rust docs"]
+
+[[site]]
+name = "Rust documentation"
+url = "https://doc.rust-lang.org/stable/std/"
+keywords = ["std", "rust std"]
+
+[[site]]
+name = "GNOME GitLab"
+url = "https://gitlab.gnome.org/"
+keywords = ["gnome"]
+
+[[site]]
+name = "Fedora Packages"
+url = "https://packages.fedoraproject.org/"
+keywords = ["fedora", "dnf"]
+
+[[site]]
+name = "Hacker News"
+url = "https://news.ycombinator.com/"
+keywords = ["hn"]
+
+[[site]]
+name = "Reddit"
+url = "https://www.reddit.com/"
+
+[[site]]
+name = "WhatsApp"
+url = "https://web.whatsapp.com/"
+keywords = ["whatsapp web"]
+
+[[site]]
+name = "X"
+url = "https://x.com/"
+keywords = ["twitter"]

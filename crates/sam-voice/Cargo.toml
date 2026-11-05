@@ -1,0 +1,40 @@
+[package]
+name = "sam-voice"
+description = "Sam's local, offline speech input worker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sam-voice"
+path = "src/bin/sam-voice.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+# Speech recognition. `ort` is deliberately pinned: transcribe-rs 0.3.12 uses
+# the 2.0.0-rc.12 API, while a plain `ort = "2.0.0-rc.12"` resolves to rc.15,
+# whose `Session::builder` needs an `Environment`. Pinning keeps the API that
+# transcribe-rs was written against.
+transcribe-rs = { version = "=0.3.12", features = ["onnx"] }
+ort = "=2.0.0-rc.12"
+
+# Microphone capture (PipeWire through ALSA on Fedora) and resampling.
+cpal = "=0.18.2"
+rubato = "=5.0.1"
+hound = "=3.5.1"
+
+# Diagnostics. The panel can install its own logger; the CLI installs
+# env_logger. All pipeline timings go through `log` at debug level.
+log = "=0.4.35"
+env_logger = "=0.11.11"
+
+# `sam-voice setup` only. Nothing on the runtime path touches the network.
+ureq = "=3.5.1"
+tar = "=0.4.46"
+flate2 = "=1.1.10"
+sha2 = "=0.11.1"
+
+[dev-dependencies]

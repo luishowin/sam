@@ -1,9 +1,11 @@
 # Roadmap
 
-**Status:** Planning intent, not a commitment · **Last updated:** 2026-11-03
+**Status:** Fedora prototype built; Essential OS work remains · **Last updated:** 2026-11-05
 
-Sam is at the design stage. This roadmap describes the intended implementation order. Each
-phase ends at a measured gate, and a safe stop at any gate should leave something usable.
+Sam has a working Fedora prototype. This roadmap still describes the intended implementation
+order toward Essential OS. Each phase ends at a measured gate, and a safe stop at any gate
+should leave something usable. See [docs/fedora-prototype.md](docs/fedora-prototype.md) for
+what is actually built.
 
 ---
 
@@ -18,6 +20,9 @@ phase ends at a measured gate, and a safe stop at any gate should leave somethin
 
 ## S0 — Scope and measure
 
+**Status:** Partial. Fedora 45 sources inventoried and measured; the 4 GB reference machine
+is still pending.
+
 **Work**
 
 - Inventory local domains, data sources and OS interfaces.
@@ -30,6 +35,8 @@ phase ends at a measured gate, and a safe stop at any gate should leave somethin
 large model or the network.
 
 ## S1 — Deterministic core
+
+**Status:** Implemented for the Fedora prototype.
 
 **Work**
 
@@ -44,6 +51,8 @@ precision meets the initial target.
 
 ## S2 — Registry authoring
 
+**Status:** Not started. The current registry is hand-authored.
+
 **Work**
 
 - Build-time model drafts domain taxonomies, intents, paraphrases and evaluation cases.
@@ -55,6 +64,8 @@ precision meets the initial target.
 ship.
 
 ## S3 — Semantic retrieval
+
+**Status:** Deferred. Lexical, synonym and fuzzy retrieval only.
 
 **Work**
 
@@ -68,6 +79,9 @@ remains usable.
 
 ## S4 — Sources and handlers
 
+**Status:** Partial. Fedora apps, files, settings, live system, hardware, networking and
+name-level documentation are implemented. Full-content indexing is not.
+
 **Work**
 
 - Files, applications, settings, hardware, system, media, networking and local documentation.
@@ -78,6 +92,9 @@ remains usable.
 **Exit gate:** access control, freshness, timeouts and errors pass integration tests.
 
 ## S5 — Search UI
+
+**Status:** Partial. Fedora GTK4 panel, result rows, structured answers and web handoff are
+implemented. Essential OS shell integration is not.
 
 **Work**
 
@@ -100,6 +117,9 @@ immediate in task-based testing.
 model-routing responsibility.
 
 ## S7 — Low-resource validation and release
+
+**Status:** Partial. Development-laptop timings are recorded; 4 GB validation and a release
+gate are pending.
 
 **Work**
 

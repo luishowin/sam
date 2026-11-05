@@ -1,9 +1,8 @@
 # Contributing
 
-Sam is at the design stage. The most useful contributions right now are architectural review,
-domain inventories, registry coverage proposals and evaluation cases. Please do not open a pull
-request with a speculative runtime implementation before the interfaces and registry schema are
-settled.
+Sam has a running Fedora prototype. The most useful contributions now are registry coverage,
+source adapters, evaluation cases, documentation fixes and measured performance reports. New
+capabilities still enter through a registry entry, a handler and tests.
 
 ---
 
@@ -15,7 +14,9 @@ Every contribution must respect the product boundary:
 - Sam does not reason, generate open-ended content or hold a conversation.
 - Sam stores no personal memory, profile or long-term query history.
 - Sam has no network egress.
-- Sam never performs state-changing OS actions.
+- The Sam engine returns constrained action proposals. The Fedora panel is the caller and
+  performs only the fixed actions the registry allows; it never builds a shell command from
+  user text.
 - New capabilities enter through a registry entry, a handler and tests.
 - Handlers never build shell commands from user input.
 - Performance and memory claims are measured, not asserted.
@@ -42,7 +43,7 @@ Every contribution must respect the product boundary:
 
 ## Pull request expectations
 
-Once implementation begins:
+For code changes:
 
 - one capability per change where practical;
 - registry entry plus handler plus tests;

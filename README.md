@@ -7,9 +7,11 @@ hardware, networking, running processes and the operating system itself. It does
 through a carefully engineered registry of domains, intents, retrieval rules and
 predefined handlers, with no generative model in the runtime.
 
-> **Status: design stage.** Sam is specified, not implemented. There is no source code,
-> no benchmark data and no release. Performance figures in this repository are
-> provisional engineering targets. See [Current development status](#current-development-status).
+> **Status: Fedora prototype.** Sam runs on one Fedora 45 / GNOME 51 workstation. The
+> deterministic core, Fedora adapters, GTK4 panel, quick actions and local speech input
+> exist and are tested. The Essential OS service, full registry authoring pipeline and
+> low-resource release gates do not. See
+> [docs/fedora-prototype.md](docs/fedora-prototype.md).
 
 ---
 
@@ -349,23 +351,31 @@ See [docs/security-and-privacy.md](docs/security-and-privacy.md).
 
 ## Current development status
 
-**Design stage.** What exists today:
+**Fedora prototype.** What exists today:
 
-- this repository, describing the intended architecture;
-- a consolidated product specification maintained with the Essential OS project record;
-- the boundary and ownership rules agreed between Sam and Ida.
+- `crates/sam-core` — deterministic registry, grammar, ranking, policy and typed results;
+- `crates/sam-linux` — Fedora/GNOME read-only adapters and fixed actions;
+- `crates/sam-voice` — local, offline push-to-talk speech input;
+- `crates/sam` — GTK4/libadwaita panel, CLI, setup and GApplication service;
+- a hand-authored registry covering apps, files, folders, settings, live system state,
+  hardware, networking and local documentation;
+- unit tests, live-source checks, a benchmark command and an RPM build.
 
-What does **not** exist:
+This machine now runs Sam instead of Ida. The migration is recorded in
+[docs/migration-from-ida.md](docs/migration-from-ida.md). Ida's repository remains a
+separate project.
 
-- runtime source code;
-- a populated registry;
-- handlers or response templates;
-- an embedding pipeline;
-- benchmarks, releases or packaged artifacts;
-- any validated performance claim.
+What does **not** exist yet:
 
-Nothing here should be read as a claim that Sam is implemented, benchmarked or
-production-ready.
+- the final Essential OS shell integration;
+- the build-time registry authoring pipeline and frozen evaluation corpus;
+- semantic embeddings and a query encoder;
+- a Unix-socket local API for other clients;
+- full-content documentation indexing;
+- measured 4 GB release gates and a packaged release beyond this prototype.
+
+The measured numbers in [docs/fedora-prototype.md](docs/fedora-prototype.md) are from the
+development laptop, not a minimum reference machine.
 
 ## Planned milestones
 
@@ -373,12 +383,12 @@ The intended implementation sequence is:
 
 | Phase | Work | Exit gate |
 |---|---|---|
-| **S0 — Scope and measure** | Inventory local domains, data sources and OS interfaces. Benchmark process overhead, the 4 GB environment, indexing and cold/warm latency. Decide whether a semantic encoder earns its cost. | Documented resource baseline; domain source map; no dependency on a large model or the network |
-| **S1 — Deterministic core** | Query normalisation, domain registry, lexical matching, confidence thresholds, typed results and handoffs. | Unit tests pass; unknown and ambiguous queries fail safely; clean-query precision meets the initial target |
+| **S0 — Scope and measure** | Inventory local domains, data sources and OS interfaces. Benchmark process overhead, the 4 GB environment, indexing and cold/warm latency. Decide whether a semantic encoder earns its cost. | **Partial:** Fedora sources inventoried and measured; 4 GB validation still pending |
+| **S1 — Deterministic core** | Query normalisation, domain registry, lexical matching, confidence thresholds, typed results and handoffs. | **Implemented** for the Fedora prototype; unit tests pass; a frozen evaluation corpus is still to come |
 | **S2 — Registry authoring** | Build-time model drafts and expands registry data. Human review, deduplication, handler validation and frozen evaluation sets. | Registry is versioned, reproducible, reviewable; untested entries cannot ship |
 | **S3 — Semantic retrieval** | Precomputed embeddings, compact query encoder loaded on demand, hybrid ranking. | Paraphrase recall improves enough to justify latency and RAM; lexical-only mode remains usable |
-| **S4 — Sources and handlers** | File, application, settings, hardware, system, media, networking and documentation sources with bounded incremental indexing. | Freshness, access control, timeouts and error reporting pass integration tests |
-| **S5 — Search UI** | Integration with Essential OS global search, result templates, actions, disambiguation and handoff UX. | Common discovery tasks succeed without memorising phrases; search feels immediate |
+| **S4 — Sources and handlers** | File, application, settings, hardware, system, media, networking and documentation sources with bounded incremental indexing. | **Partial:** Fedora sources and handlers implemented; documentation is name-level only |
+| **S5 — Search UI** | Integration with Essential OS global search, result templates, actions, disambiguation and handoff UX. | **Partial:** Fedora GTK4 panel and web handoff implemented; Essential OS integration pending |
 | **S6 — Ida integration** | Typed local API; route Ida's local-information lookups to Sam. | No duplicate indexes; Ida uses Sam without granting it action authority or model routing |
 | **S7 — Low-resource validation** | 4 GB systems, offline, index load, encoder cold start, failure injection, cache churn. | Memory, latency, accuracy, offline, privacy and no-memory gates pass |
 
@@ -386,9 +396,9 @@ These phases are planning intent, not commitments. See [ROADMAP.md](ROADMAP.md).
 
 ## Contributing
 
-Sam is documentation-led while the architecture is being settled. Useful contributions at
-this stage are design review, domain inventories, registry coverage proposals and evaluation
-cases — not speculative runtime code.
+Sam now has a running Fedora prototype. Useful contributions are registry coverage,
+evaluation cases, source adapters, documentation fixes and measured performance reports.
+New capabilities still enter through a registry entry, a handler and tests.
 
 The rules that will govern code contributions:
 
@@ -411,5 +421,7 @@ MIT-licensed projects.
 
 ## Related
 
+- Fedora prototype: [docs/fedora-prototype.md](docs/fedora-prototype.md)
+- Migration from Ida: [docs/migration-from-ida.md](docs/migration-from-ida.md)
 - Essential OS project record: <https://github.com/luishowin/essential-os>
 - Ida, the personal assistant: <https://github.com/luishowin/ida>

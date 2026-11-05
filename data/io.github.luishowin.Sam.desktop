@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sam
+GenericName=Search Execution Engine
+Comment=Search this computer: files, apps, settings, system and hardware
+Exec=sam
+Icon=io.github.luishowin.Sam
+Categories=Utility;
+Keywords=search;find;launcher;system;settings;files;apps;
+DBusActivatable=true
+StartupNotify=true

@@ -1,0 +1,17 @@
+[package]
+name = "sam-linux"
+description = "SAM's Fedora/GNOME adapter: apps, files, launching, system actions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+sam-core.workspace = true
+glib.workspace = true
+gio.workspace = true
+gio-unix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+libc = "0.2"

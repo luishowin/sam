@@ -1,0 +1,575 @@
+# SAM Core's grammar (ARCHITECTURE.md §6).
+#
+# Input is normalised before it gets here: lowercased, contractions expanded,
+# possessive 's dropped, filler words removed (please, can, you, me, my, the,
+# a, an, …), a leading "to" and a trailing "now" dropped. So patterns never
+# contain filler words — the compiler rejects them.
+#
+# Pattern syntax, matched against the whole input:
+#   word            that word
+#   (a|b c)         one of the alternatives (each may be several words)
+#   [a|b c]         optionally one of them
+#   {name:rest}     one or more remaining words (last only)
+#   {name:place}    a place word      {name:level}   0–100, optionally with %
+#   {name:on_off}   on / off / toggle and synonyms
+#
+# An [[intent]] names an action (ARCHITECTURE.md §7), fixed args, and the
+# title and icon its row shows. Its title and keywords are also matched
+# fuzzily, so a command appears while it is being typed.
+# A [[mode]] rewrites the query instead of naming an action.
+# Rules are tried in file order; the first full match wins.
+
+# ── Places ────────────────────────────────────────────────────────────────
+
+[[intent]]
+action = "place.open"
+title = "Open folder"
+icon = "folder-symbolic"
+patterns = [
+  "{place:place} [folder]",
+  "(open|show|browse|go to) {place:place} [folder]",
+]
+
+# ── Screen and session ────────────────────────────────────────────────────
+
+[[intent]]
+action = "system.lock"
+title = "Lock Screen"
+icon = "system-lock-screen-symbolic"
+keywords = ["lock"]
+patterns = [
+  "lock",
+  "lock up",
+  "lock (screen|computer|pc|laptop|session|desktop|machine|it)",
+  "(lock screen|screen lock)",
+]
+
+[[intent]]
+action = "system.suspend"
+title = "Suspend"
+subtitle = "Asks first"
+icon = "media-playback-pause-symbolic"
+keywords = ["sleep"]
+patterns = [
+  "(suspend|sleep|hibernate)",
+  "(suspend|sleep) (computer|pc|laptop|machine|system)",
+  "(go|put computer) to sleep",
+  "(put|send) (computer|pc|laptop|machine) to sleep",
+]
+
+[[intent]]
+action = "session.logout"
+title = "Log Out…"
+subtitle = "GNOME asks first"
+icon = "system-log-out-symbolic"
+keywords = ["sign out", "logout"]
+patterns = ["(log out|logout|log off|sign out|signout)"]
+
+[[intent]]
+action = "session.restart"
+title = "Restart…"
+subtitle = "GNOME asks first"
+icon = "system-reboot-symbolic"
+keywords = ["reboot"]
+patterns = [
+  "(restart|reboot)",
+  "(restart|reboot) (computer|pc|laptop|machine|system)",
+]
+
+[[intent]]
+action = "session.power_off"
+title = "Power Off…"
+subtitle = "GNOME asks first"
+icon = "system-shutdown-symbolic"
+keywords = ["shut down", "shutdown"]
+patterns = [
+  "(shut down|shutdown|power off|poweroff|switch off)",
+  "(shut down|shutdown|power off) (computer|pc|laptop|machine|system)",
+  "(turn|switch) off (computer|pc|laptop|machine|system)",
+  "(turn|switch) (computer|pc|laptop|machine) off",
+]
+
+# ── Radios ────────────────────────────────────────────────────────────────
+
+[[intent]]
+action = "bluetooth.set"
+title = "Turn Bluetooth Off"
+icon = "bluetooth-disabled-symbolic"
+args = { state = "off" }
+patterns = [
+  "(turn|switch) off bluetooth",
+  "(turn|switch) bluetooth off",
+  "(disable|deactivate|stop) bluetooth",
+  "bluetooth (off|disable|disabled)",
+  "no bluetooth",
+]
+
+[[intent]]
+action = "bluetooth.set"
+title = "Turn Bluetooth On"
+icon = "bluetooth-active-symbolic"
+args = { state = "on" }
+patterns = [
+  "(turn|switch) on bluetooth",
+  "(turn|switch) bluetooth on",
+  "(enable|activate|start) bluetooth",
+  "bluetooth (on|enable|enabled)",
+]
+
+[[intent]]
+action = "bluetooth.set"
+title = "Toggle Bluetooth"
+icon = "bluetooth-active-symbolic"
+args = { state = "toggle" }
+patterns = ["bluetooth", "toggle bluetooth"]
+
+[[intent]]
+action = "wifi.set"
+title = "Turn Wi-Fi Off"
+icon = "network-wireless-disabled-symbolic"
+keywords = ["wireless"]
+args = { state = "off" }
+patterns = [
+  "(turn|switch) off (wifi|wi-fi|wireless)",
+  "(turn|switch) (wifi|wi-fi|wireless) off",
+  "(disable|deactivate|stop) (wifi|wi-fi|wireless)",
+  "(wifi|wi-fi|wireless) (off|disable|disabled)",
+]
+
+[[intent]]
+action = "wifi.set"
+title = "Turn Wi-Fi On"
+icon = "network-wireless-symbolic"
+keywords = ["wireless"]
+args = { state = "on" }
+patterns = [
+  "(turn|switch) on (wifi|wi-fi|wireless)",
+  "(turn|switch) (wifi|wi-fi|wireless) on",
+  "(enable|activate|start) (wifi|wi-fi|wireless)",
+  "(wifi|wi-fi|wireless) (on|enable|enabled)",
+]
+
+# ── Sound and media ───────────────────────────────────────────────────────
+
+[[intent]]
+action = "audio.volume"
+title = "Volume Up"
+icon = "audio-volume-high-symbolic"
+keywords = ["louder"]
+args = { direction = "up" }
+patterns = [
+  "volume up",
+  "(turn|crank) [up] volume up",
+  "(turn|crank) up volume",
+  "(raise|increase) volume",
+  "louder",
+]
+
+[[intent]]
+action = "audio.volume"
+title = "Volume Down"
+icon = "audio-volume-low-symbolic"
+keywords = ["quieter"]
+args = { direction = "down" }
+patterns = [
+  "volume down",
+  "turn volume down",
+  "turn down volume",
+  "(lower|decrease|reduce) volume",
+  "(quieter|softer)",
+]
+
+[[intent]]
+action = "audio.volume_set"
+title = "Set Volume"
+icon = "audio-volume-high-symbolic"
+patterns = ["[set] volume [to|at] {level:level}"]
+
+[[intent]]
+action = "audio.mute"
+title = "Mute"
+icon = "audio-volume-muted-symbolic"
+args = { state = "on" }
+patterns = [
+  "mute",
+  "mute (sound|audio|volume|computer|speakers)",
+  "(sound|audio|volume) off",
+  "(turn|switch) off (sound|audio)",
+  "silence",
+]
+
+[[intent]]
+action = "audio.mute"
+title = "Unmute"
+icon = "audio-volume-high-symbolic"
+args = { state = "off" }
+patterns = [
+  "unmute",
+  "unmute (sound|audio|volume|computer|speakers)",
+  "(sound|audio) on",
+  "(turn|switch) on (sound|audio)",
+]
+
+[[intent]]
+action = "media.control"
+title = "Play or Pause"
+icon = "media-playback-start-symbolic"
+args = { command = "play_pause" }
+patterns = ["(play pause|play/pause|playpause|toggle music|toggle playback)"]
+
+[[intent]]
+action = "media.control"
+title = "Pause Music"
+icon = "media-playback-pause-symbolic"
+args = { command = "pause" }
+patterns = [
+  "pause",
+  "pause (music|song|track|playback|media|spotify|video)",
+  "stop (music|song|playback)",
+]
+
+[[intent]]
+action = "media.control"
+title = "Play Music"
+icon = "media-playback-start-symbolic"
+args = { command = "play" }
+patterns = [
+  "(play|resume)",
+  "(play|resume) (music|song|track|playback|media|spotify)",
+]
+
+[[intent]]
+action = "media.control"
+title = "Next Track"
+icon = "media-skip-forward-symbolic"
+args = { command = "next" }
+patterns = [
+  "(next|skip)",
+  "(next|skip) (song|track)",
+  "skip this (song|track)",
+]
+
+[[intent]]
+action = "media.control"
+title = "Previous Track"
+icon = "media-skip-backward-symbolic"
+args = { command = "previous" }
+patterns = [
+  "(previous|prev)",
+  "(previous|prev|last) (song|track)",
+  "go back [one] (song|track)",
+]
+
+# ── Appearance and notifications ──────────────────────────────────────────
+
+[[intent]]
+action = "appearance.dark"
+title = "Dark Style On"
+icon = "weather-clear-night-symbolic"
+keywords = ["dark mode", "night"]
+args = { state = "on" }
+patterns = [
+  "(dark mode|dark style|dark theme) on",
+  "(turn|switch) on (dark mode|dark style|dark theme)",
+  "(enable|use) (dark mode|dark style|dark theme)",
+  "(go|switch to) dark",
+]
+
+[[intent]]
+action = "appearance.dark"
+title = "Dark Style Off"
+icon = "display-brightness-symbolic"
+keywords = ["light mode", "day"]
+args = { state = "off" }
+patterns = [
+  "(dark mode|dark style|dark theme) off",
+  "(turn|switch) off (dark mode|dark style|dark theme)",
+  "(disable|stop) (dark mode|dark style|dark theme)",
+  "(light mode|light style|light theme) [on]",
+  "(go|switch to) light",
+]
+
+[[intent]]
+action = "appearance.dark"
+title = "Toggle Dark Style"
+icon = "weather-clear-night-symbolic"
+args = { state = "toggle" }
+patterns = ["(dark mode|dark style|dark theme)", "toggle (dark mode|dark style|dark theme)"]
+
+[[intent]]
+action = "notifications.dnd"
+title = "Do Not Disturb On"
+icon = "notifications-disabled-symbolic"
+keywords = ["dnd", "focus"]
+args = { state = "on" }
+patterns = [
+  "(do not disturb|dnd) on",
+  "(turn|switch) on (do not disturb|dnd)",
+  "(enable|start) (do not disturb|dnd)",
+  "(silence|mute|hide) notifications",
+]
+
+[[intent]]
+action = "notifications.dnd"
+title = "Do Not Disturb Off"
+icon = "notifications-disabled-symbolic"
+keywords = ["dnd"]
+args = { state = "off" }
+patterns = [
+  "(do not disturb|dnd) off",
+  "(turn|switch) off (do not disturb|dnd)",
+  "(disable|stop) (do not disturb|dnd)",
+  "(show|unmute) notifications",
+]
+
+[[intent]]
+action = "notifications.dnd"
+title = "Toggle Do Not Disturb"
+icon = "notifications-disabled-symbolic"
+args = { state = "toggle" }
+patterns = ["(do not disturb|dnd)", "toggle (do not disturb|dnd)"]
+
+# ── Calendar ──────────────────────────────────────────────────────────────
+
+[[intent]]
+action = "calendar.open"
+title = "Today's Calendar"
+subtitle = "Opens GNOME Calendar"
+icon = "x-office-calendar-symbolic"
+keywords = ["agenda", "schedule", "events"]
+patterns = [
+  "(show|open|check|see) [today|todays] (calendar|agenda|schedule|events)",
+  "today [calendar|agenda|schedule|events]",
+  "(agenda|schedule)",
+  "what is [on] [today|for today]",
+  "what is on (calendar|agenda|schedule) [today]",
+  "(show|what are) [today] (events|meetings|appointments) [today]",
+]
+
+# ── Display, power and devices ────────────────────────────────────────────
+
+[[intent]]
+action = "display.night_light"
+title = "Night Light On"
+icon = "weather-clear-night-symbolic"
+keywords = ["night light", "night mode", "blue light"]
+args = { state = "on" }
+patterns = [
+  "(night light|night mode|blue light filter) on",
+  "(turn|switch) on (night light|night mode|blue light filter)",
+  "(enable|start|use) (night light|night mode|blue light filter)",
+]
+
+[[intent]]
+action = "display.night_light"
+title = "Night Light Off"
+icon = "display-brightness-symbolic"
+keywords = ["night light", "night mode", "blue light"]
+args = { state = "off" }
+patterns = [
+  "(night light|night mode|blue light filter) off",
+  "(turn|switch) off (night light|night mode|blue light filter)",
+  "(disable|stop) (night light|night mode|blue light filter)",
+]
+
+[[intent]]
+action = "display.night_light"
+title = "Toggle Night Light"
+icon = "weather-clear-night-symbolic"
+args = { state = "toggle" }
+patterns = ["(night light|night mode)", "toggle (night light|night mode)"]
+
+[[intent]]
+action = "display.night_light_temperature"
+title = "Set Night Light Warmth"
+icon = "weather-clear-night-symbolic"
+keywords = ["night light temperature", "night light warmth"]
+patterns = [
+  "(set|make) (night light|night mode) [temperature] [to] {temperature:kelvin}",
+  "(night light|night mode) (temperature|warmth) [to] {temperature:kelvin}",
+  "(night light|night mode) {temperature:kelvin}",
+]
+
+[[intent]]
+action = "system.airplane"
+title = "Airplane Mode On"
+icon = "airplane-mode-symbolic"
+keywords = ["airplane", "flight mode"]
+args = { state = "on" }
+patterns = [
+  "(airplane|flight) mode on",
+  "(turn|switch) on (airplane|flight) mode",
+  "(enable|start) (airplane|flight) mode",
+]
+
+[[intent]]
+action = "system.airplane"
+title = "Airplane Mode Off"
+icon = "airplane-mode-symbolic"
+args = { state = "off" }
+patterns = [
+  "(airplane|flight) mode off",
+  "(turn|switch) off (airplane|flight) mode",
+  "(disable|stop) (airplane|flight) mode",
+]
+
+[[intent]]
+action = "system.airplane"
+title = "Toggle Airplane Mode"
+icon = "airplane-mode-symbolic"
+args = { state = "toggle" }
+patterns = ["(airplane|flight) mode", "toggle (airplane|flight) mode"]
+
+[[intent]]
+action = "power.profile"
+title = "Power Saver"
+icon = "battery-good-symbolic"
+keywords = ["power saver", "power saving"]
+args = { profile = "power-saver" }
+patterns = [
+  "(power saver|power saving|saver) mode [on]",
+  "(switch|set) [to] (power saver|power saving)",
+  "save battery",
+]
+
+[[intent]]
+action = "power.profile"
+title = "Balanced Power"
+icon = "battery-good-symbolic"
+args = { profile = "balanced" }
+patterns = ["balanced [power] [profile|mode]", "(set|switch to) balanced [power] [profile|mode]"]
+
+[[intent]]
+action = "power.profile"
+title = "Performance Power"
+icon = "battery-full-charging-symbolic"
+keywords = ["performance mode"]
+args = { profile = "performance" }
+patterns = [
+  "performance [power] [profile|mode]",
+  "(set|switch to) performance [power] [profile|mode]",
+]
+
+[[intent]]
+action = "bluetooth.connect"
+title = "Connect Bluetooth Device"
+icon = "bluetooth-active-symbolic"
+keywords = ["connect bluetooth"]
+args = { action = "connect" }
+patterns = [
+  "connect [to] [bluetooth] [device] {device:rest}",
+  "connect bluetooth {device:rest}",
+]
+
+[[intent]]
+action = "bluetooth.connect"
+title = "Disconnect Bluetooth Device"
+icon = "bluetooth-disabled-symbolic"
+args = { action = "disconnect" }
+patterns = [
+  "disconnect [from] [bluetooth] [device] {device:rest}",
+  "disconnect bluetooth {device:rest}",
+]
+
+[[intent]]
+action = "terminal.open"
+title = "Open Terminal"
+icon = "utilities-terminal-symbolic"
+keywords = ["terminal", "console", "shell"]
+patterns = [
+  "(open|launch|show) (terminal|console)",
+  "terminal",
+  "console",
+]
+
+# ── Timers and alarms ─────────────────────────────────────────────────────
+
+[[intent]]
+action = "timer.set"
+title = "Set Timer"
+icon = "preferences-system-time-symbolic"
+keywords = ["timer"]
+patterns = [
+  "[set] timer [for] {duration:rest}",
+  "timer {duration:rest}",
+  "[set] timer {duration:rest}",
+  "remind in {duration:rest}",
+]
+
+[[intent]]
+action = "timer.cancel"
+title = "Cancel Timer"
+icon = "preferences-system-time-symbolic"
+patterns = [
+  "cancel timer [called|named] {id:rest}",
+  "cancel timer {id:rest}",
+  "cancel timer",
+]
+
+[[intent]]
+action = "timer.list"
+title = "List Timers"
+icon = "preferences-system-time-symbolic"
+patterns = ["(list|show) timers", "timers"]
+
+[[intent]]
+action = "alarm.set"
+title = "Set Alarm"
+icon = "alarm-symbolic"
+keywords = ["alarm", "wake up"]
+patterns = [
+  "[set] alarm [for] {time:rest}",
+  "alarm at {time:rest}",
+  "wake up at {time:rest}",
+]
+
+[[intent]]
+action = "alarm.cancel"
+title = "Cancel Alarm"
+icon = "alarm-symbolic"
+patterns = [
+  "cancel alarm [called|named] {id:rest}",
+  "cancel alarm {id:rest}",
+  "cancel alarm",
+]
+
+[[intent]]
+action = "alarm.list"
+title = "List Alarms"
+icon = "alarm-symbolic"
+patterns = ["(list|show) alarms", "alarms"]
+
+# ── Media seeking ─────────────────────────────────────────────────────────
+
+[[intent]]
+action = "media.seek"
+title = "Seek Forward"
+icon = "media-seek-forward-symbolic"
+args = { direction = "forward" }
+patterns = [
+  "(seek|skip) forward {seconds:level} [seconds]",
+  "forward {seconds:level} [seconds]",
+]
+
+[[intent]]
+action = "media.seek"
+title = "Seek Back"
+icon = "media-seek-backward-symbolic"
+args = { direction = "back" }
+patterns = [
+  "(seek|skip) back [by] {seconds:level} [seconds]",
+  "back {seconds:level} [seconds]",
+]
+
+# ── Modes ─────────────────────────────────────────────────────────────────
+
+[[mode]]
+mode = "find"
+patterns = [
+  "search (files|computer) [for] {rest}",
+  "(find|search|locate|look for|look up|where is|where are) [for] {rest}",
+]
+
+[[mode]]
+mode = "open"
+patterns = ["(open|launch|start|run|show|go to|switch to) {rest}"]

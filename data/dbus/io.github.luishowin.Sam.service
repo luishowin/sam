@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=io.github.luishowin.Sam
+Exec=@bindir@/sam --gapplication-service
+SystemdService=io.github.luishowin.Sam.service

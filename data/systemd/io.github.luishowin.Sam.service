@@ -1,0 +1,16 @@
+[Unit]
+Description=Sam — search execution engine
+Documentation=https://github.com/luishowin/sam
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=io.github.luishowin.Sam
+ExecStart=@bindir@/sam --gapplication-service
+Slice=app.slice
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
