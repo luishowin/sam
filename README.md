@@ -237,10 +237,11 @@ Each canonical intent maps to one reusable, version-controlled handler. A handle
 - never assembles a shell command from user text.
 
 Opening a file, launching an application or navigating to a settings page is represented as a
-constrained **result action**, not arbitrary execution. State-changing operations — changing
-volume, moving files, deleting, rebooting — belong to Ida's policy-controlled executor or
-another explicit OS action service. Sam proposes actions; the caller validates and performs
-them.
+constrained **result action**, not arbitrary execution. Sam proposes actions; the caller
+validates and performs them. In the Fedora prototype the panel is the caller and performs a
+small fixed set of quick actions (volume, media, radios, night light, power profile, timers).
+On Essential OS those route through the OS capability layer or Ida's executor. Sam never
+builds a shell command from user text.
 
 Results are structured records, not generated prose: title, concise deterministic
 description, entity type, source, location or state, last-updated time, confidence band and
@@ -370,7 +371,8 @@ What does **not** exist yet:
 - the final Essential OS shell integration;
 - the build-time registry authoring pipeline and frozen evaluation corpus;
 - semantic embeddings and a query encoder;
-- a Unix-socket local API for other clients;
+- a versioned local API schema and capability checks (a small JSON-lines Unix
+  socket exists);
 - full-content documentation indexing;
 - measured 4 GB release gates and a packaged release beyond this prototype.
 

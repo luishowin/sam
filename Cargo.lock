@@ -1822,6 +1822,7 @@ dependencies = [
  "sam-core",
  "sam-linux",
  "sam-voice",
+ "serde_json",
 ]
 
 [[package]]

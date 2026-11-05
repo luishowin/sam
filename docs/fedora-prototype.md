@@ -93,6 +93,7 @@ sam query "does htop exist" --json
 sam run "lock my computer" --dry-run
 sam run "set a timer for 10m"
 sam voice status
+sam serve                   # JSON lines on $XDG_RUNTIME_DIR/sam.sock
 sam doctor
 sam bench
 sam log
@@ -100,6 +101,16 @@ sam log
 
 `sam query --json` returns the same structured rows the panel uses, with
 `title`, `subtitle`, `kind`, `score` and the inert `intent`.
+
+`sam serve` exposes the same answer over a Unix socket:
+
+```sh
+printf '%s\n' '{"query":"what is using my RAM"}' | nc -U "$XDG_RUNTIME_DIR/sam.sock"
+```
+
+It returns `{"status":"ok","query":…,"elapsed_ms":…,"results":[…]}` or
+`{"status":"no_confident_match",…}`. There is no TCP listener and no network
+door.
 
 ## Build and install
 
@@ -147,8 +158,8 @@ or unload it after a bounded idle period, at the cost of the first syllable.
   the RPM. Its 158 MB on disk and ~280 MB resident cost exceed the provisional
   4 GB budget.
 - Settings navigation uses GNOME panel IDs; other desktops need their own map.
-- The typed local API is the CLI's JSON output today; a Unix-socket service is
-  the next step.
+- The typed local API is a JSON-lines Unix socket today; versioning, capability
+  checks and a formal schema are still to come.
 - Registry entries are still hand-authored. The build-time authoring pipeline
   from the specification is not implemented.
 - `ort` fetches its ONNX Runtime binary during the first build. The runtime is
