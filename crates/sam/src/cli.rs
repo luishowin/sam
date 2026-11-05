@@ -406,6 +406,11 @@ pub fn notify(args: &[String]) -> ExitCode {
     }
 }
 
+pub fn status() -> ExitCode {
+    config_status();
+    ExitCode::SUCCESS
+}
+
 pub fn doctor() -> ExitCode {
     let world = World::new();
     world.projects.refresh_now();
@@ -430,4 +435,292 @@ pub fn doctor() -> ExitCode {
     let mut out = std::io::stdout();
     let _ = writeln!(out);
     ExitCode::SUCCESS
+}
+
+// ---- terminal configuration ------------------------------------------------
+
+const SERVICE: &str = "io.github.luishowin.Sam.service";
+
+fn systemctl(args: &[&str]) -> Result<String, String> {
+    let out = std::process::Command::new("systemctl")
+        .arg("--user")
+        .args(args)
+        .output()
+        .map_err(|e| format!("systemctl: {e}"))?;
+    let text = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    if out.status.success() {
+        Ok(text)
+    } else {
+        Err(if text.is_empty() {
+            String::from_utf8_lossy(&out.stderr).trim().to_owned()
+        } else {
+            text
+        })
+    }
+}
+
+fn restart_service() -> String {
+    match systemctl(&["restart", SERVICE]) {
+        Ok(_) => "service restarted".into(),
+        Err(e) => format!("service restart failed: {e}"),
+    }
+}
+
+fn service_pid() -> Option<u32> {
+    systemctl(&["show", "-p", "MainPID", "--value", SERVICE])
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|p| *p > 0)
+}
+
+fn service_rss(pid: u32) -> Option<(u64, u64, u64)> {
+    let status = std::fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+    let value = |name: &str| {
+        status
+            .lines()
+            .find(|l| l.starts_with(name))
+            .and_then(|l| l.split_whitespace().nth(1))
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    Some((value("VmRSS:"), value("VmHWM:"), value("Threads:")))
+}
+
+fn config_status() {
+    let config = Config::load();
+    println!("Sam {}", env!("CARGO_PKG_VERSION"));
+    println!("app id:    {}", sam_core::APP_ID);
+    println!("config:    {}", Config::path().display());
+    println!("service:   {}", systemctl(&["is-active", SERVICE]).unwrap_or_else(|e| e));
+    println!(
+        "voice:     {} ({})",
+        if config.voice.enabled { "enabled" } else { "disabled" },
+        config.voice_mode()
+    );
+    println!(
+        "auto-run:  {}",
+        if config.voice.auto_run { "on" } else { "off" }
+    );
+    let model = sam_voice::model_status_for_root(&sam_voice::default_models_root());
+    println!(
+        "model:     {}",
+        if model.is_present() { "ready" } else { "missing" }
+    );
+    if let Some(pid) = service_pid()
+        && let Some((rss, peak, threads)) = service_rss(pid)
+    {
+        println!(
+            "memory:    {} MB RSS · {} MB peak · {} threads",
+            rss / 1024,
+            peak / 1024,
+            threads
+        );
+    }
+}
+
+fn service_menu() {
+    loop {
+        println!("\nService");
+        println!("  1. Start");
+        println!("  2. Stop");
+        println!("  3. Restart");
+        println!("  0. Back");
+        match prompt("Choose: ").as_str() {
+            "1" => println!("{}", systemctl(&["start", SERVICE]).unwrap_or_else(|e| e)),
+            "2" => println!("{}", systemctl(&["stop", SERVICE]).unwrap_or_else(|e| e)),
+            "3" => println!("{}", restart_service()),
+            "0" => return,
+            _ => println!("Unknown choice."),
+        }
+    }
+}
+
+fn voice_menu() {
+    loop {
+        println!("\nVoice");
+        println!("  1. Enable (eager, instant)");
+        println!("  2. Enable (lazy, low idle memory)");
+        println!("  3. Disable");
+        println!("  4. Download / verify model");
+        println!("  5. Status");
+        println!("  0. Back");
+        let choice = prompt("Choose: ");
+        match choice.as_str() {
+            "1" | "2" | "3" => {
+                let mut config = Config::load();
+                match choice.as_str() {
+                    "1" => {
+                        config.voice.enabled = true;
+                        config.voice.mode = "eager".into();
+                    }
+                    "2" => {
+                        config.voice.enabled = true;
+                        config.voice.mode = "lazy".into();
+                    }
+                    _ => {
+                        config.voice.enabled = false;
+                        config.voice.mode = "off".into();
+                    }
+                }
+                match config.save() {
+                    Ok(()) => println!("Saved. {}", restart_service()),
+                    Err(e) => println!("Could not save: {e}"),
+                }
+            }
+            "4" => match sam_voice::download_and_install(&sam_voice::default_models_root()) {
+                Ok(outcome) => println!("Model ready at {}", outcome.dir().display()),
+                Err(e) => println!("Voice setup failed: {e}"),
+            },
+            "5" => {
+                let status = sam_voice::model_status_for_root(&sam_voice::default_models_root());
+                println!("Model: {}", status.dir().display());
+                println!("State: {}", if status.is_present() { "ready" } else { "missing" });
+            }
+            "0" => return,
+            _ => println!("Unknown choice."),
+        }
+    }
+}
+
+fn prompt(label: &str) -> String {
+    print!("{label}");
+    let _ = std::io::stdout().flush();
+    let mut line = String::new();
+    let _ = std::io::stdin().read_line(&mut line);
+    line.trim().to_owned()
+}
+
+pub fn config(args: &[String]) -> ExitCode {
+    match args.first().map(String::as_str) {
+        None => config_menu(),
+        Some("path") => {
+            println!("{}", Config::path().display());
+            ExitCode::SUCCESS
+        }
+        Some("get") => {
+            let Some(key) = args.get(1) else {
+                return usage("config get needs a key");
+            };
+            let config = Config::load();
+            let value = match key.as_str() {
+                "voice.enabled" => config.voice.enabled.to_string(),
+                "voice.mode" => config.voice_mode().to_owned(),
+                "voice.auto_run" => config.voice.auto_run.to_string(),
+                "voice.threads" => config.voice.threads.to_string(),
+                "voice.model" => config.voice.model.clone(),
+                other => return usage(&format!("unknown key {other:?}")),
+            };
+            println!("{value}");
+            ExitCode::SUCCESS
+        }
+        Some("set") => {
+            let (Some(key), Some(value)) = (args.get(1), args.get(2)) else {
+                return usage("config set needs a key and a value");
+            };
+            let mut config = Config::load();
+            match key.as_str() {
+                "voice.enabled" => {
+                    config.voice.enabled = matches!(value.as_str(), "1" | "true" | "yes" | "on");
+                    if !config.voice.enabled {
+                        config.voice.mode = "off".into();
+                    }
+                }
+                "voice.mode" => match value.as_str() {
+                    "eager" | "lazy" => {
+                        config.voice.enabled = true;
+                        config.voice.mode = value.clone();
+                    }
+                    "off" => {
+                        config.voice.enabled = false;
+                        config.voice.mode = "off".into();
+                    }
+                    other => return usage(&format!("unknown voice mode {other:?}")),
+                },
+                "voice.auto_run" => {
+                    config.voice.auto_run = matches!(value.as_str(), "1" | "true" | "yes" | "on")
+                }
+                "voice.threads" => match value.parse::<usize>() {
+                    Ok(n) if (1..=16).contains(&n) => config.voice.threads = n,
+                    _ => return usage("voice.threads must be 1–16"),
+                },
+                other => return usage(&format!("unknown key {other:?}")),
+            }
+            match config.save() {
+                Ok(()) => {
+                    println!("saved. {}", restart_service());
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("sam: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
+        Some(other) => usage(&format!("config: unknown command {other:?}")),
+    }
+}
+
+fn config_menu() -> ExitCode {
+    loop {
+        let config = Config::load();
+        println!("\nSam configuration");
+        println!(
+            "  voice: {} ({}) · auto-run {}",
+            if config.voice.enabled { "on" } else { "off" },
+            config.voice_mode(),
+            if config.voice.auto_run { "on" } else { "off" }
+        );
+        println!("  1. Status");
+        println!("  2. Version");
+        println!("  3. Service start / stop / restart");
+        println!("  4. Voice on / off / mode");
+        println!("  5. Voice model setup / status");
+        println!("  6. Memory and CPU");
+        println!("  7. Config file path");
+        println!("  8. Re-run sam setup (Super+Space)");
+        println!("  9. Toggle voice auto-run");
+        println!("  0. Quit");
+        match prompt("Choose: ").as_str() {
+            "1" => config_status(),
+            "2" => println!("sam {}", env!("CARGO_PKG_VERSION")),
+            "3" => service_menu(),
+            "4" => voice_menu(),
+            "5" => voice_menu(),
+            "6" => {
+                if let Some(pid) = service_pid()
+                    && let Some((rss, peak, threads)) = service_rss(pid)
+                {
+                    println!("pid:      {pid}");
+                    println!("rss:      {} MB", rss / 1024);
+                    println!("peak:     {} MB", peak / 1024);
+                    println!("threads:  {threads}");
+                } else {
+                    println!("The service is not running.");
+                }
+            }
+            "7" => println!("{}", Config::path().display()),
+            "8" => match sam_linux::setup::install() {
+                Ok(report) => {
+                    for line in report {
+                        println!("{line}");
+                    }
+                }
+                Err(e) => println!("setup failed: {e}"),
+            },
+            "9" => {
+                let mut config = Config::load();
+                config.voice.auto_run = !config.voice.auto_run;
+                match config.save() {
+                    Ok(()) => println!(
+                        "auto-run {}. {}",
+                        if config.voice.auto_run { "on" } else { "off" },
+                        restart_service()
+                    ),
+                    Err(e) => println!("Could not save: {e}"),
+                }
+            }
+            "0" => return ExitCode::SUCCESS,
+            _ => println!("Unknown choice."),
+        }
+    }
 }

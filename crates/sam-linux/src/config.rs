@@ -2,16 +2,16 @@
 
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     pub projects: Projects,
     pub voice: Voice,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Projects {
     pub roots: Vec<String>,
@@ -37,9 +37,15 @@ impl Default for Projects {
 }
 
 /// Local speech input. English only, offline, no model in the search path.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Voice {
+    /// Whether the panel starts the speech worker at all.
+    pub enabled: bool,
+    /// "eager" loads at service start, "lazy" on first press, "off" never.
+    pub mode: String,
+    /// Run a confident voice result immediately; risky actions still ask.
+    pub auto_run: bool,
     /// Directory under `~/.local/share/sam/models` holding Moonshine.
     pub model: String,
     /// 0 means every available core.
@@ -53,6 +59,9 @@ pub struct Voice {
 impl Default for Voice {
     fn default() -> Self {
         Voice {
+            enabled: true,
+            mode: "eager".into(),
+            auto_run: true,
             model: "moonshine-streaming".into(),
             threads: 0,
             max_seconds: 15,
@@ -107,6 +116,27 @@ impl Config {
 
     pub fn parse(text: &str) -> Result<Config, String> {
         toml::from_str(text).map_err(|e| e.to_string())
+    }
+
+    pub fn save(&self) -> Result<(), String> {
+        let path = Config::path();
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        }
+        let text = toml::to_string_pretty(self).map_err(|e| e.to_string())?;
+        std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))
+    }
+
+    /// The effective mode, treating `enabled = false` as off.
+    pub fn voice_mode(&self) -> &str {
+        if !self.voice.enabled {
+            "off"
+        } else {
+            match self.voice.mode.as_str() {
+                "eager" | "lazy" | "off" => self.voice.mode.as_str(),
+                _ => "eager",
+            }
+        }
     }
 
     /// The project roots that exist, with `~` expanded.

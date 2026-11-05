@@ -93,8 +93,9 @@ name-level documentation are implemented. Full-content indexing is not.
 
 ## S5 — Search UI
 
-**Status:** Partial. Fedora GTK4 panel, result rows, structured answers and web handoff are
-implemented. Essential OS shell integration is not.
+**Status:** Partial. Fedora GTK4 panel, result rows, structured answers, live timer card,
+terminal configuration menu and web handoff are implemented. Essential OS shell integration
+is not.
 
 **Work**
 

@@ -99,7 +99,24 @@ fn add_actions(app: &adw::Application, panel: &Rc<Panel>) {
                 })
                 .build()
         };
-        app.add_action_entries([snapshot]);
+        let enter = {
+            let panel = panel.clone();
+            gio::ActionEntry::builder("debug-enter")
+                .activate(move |_: &adw::Application, _, _| panel.debug_enter())
+                .build()
+        };
+        let heard = {
+            let panel = panel.clone();
+            gio::ActionEntry::builder("debug-heard")
+                .parameter_type(Some(glib::VariantTy::STRING))
+                .activate(move |_: &adw::Application, _, param| {
+                    if let Some(text) = param.and_then(|p| p.get::<String>()) {
+                        panel.debug_heard(&text);
+                    }
+                })
+                .build()
+        };
+        app.add_action_entries([snapshot, enter, heard]);
     }
 }
 

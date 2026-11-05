@@ -96,6 +96,7 @@ impl Executor {
             }
         }
         let a = &approved;
+        let mut timer_entry: Option<crate::timers::Entry> = None;
         let outcome: Result<String, ExecError> = (|| -> Result<String, ExecError> {
             match a.action() {
             "app.launch" => launch::app(arg(a, "app_id")?, &[], ctx).map(|()| "Opened".into()),
@@ -153,7 +154,12 @@ impl Executor {
                 system::bluetooth_connect(arg(a, "action")?, arg(a, "device")?)
             }
             "terminal.open" => launch::terminal(ctx),
-            "timer.set" => crate::timers::set(arg(a, "duration")?, a.text("label").unwrap_or("")),
+            "timer.set" => {
+                let started =
+                    crate::timers::set_entry(arg(a, "duration")?, a.text("label").unwrap_or(""))?;
+                timer_entry = Some(started.entry);
+                Ok(started.message)
+            }
             "timer.cancel" => crate::timers::cancel(a.text("id").unwrap_or("")),
             "timer.list" => crate::timers::list(),
             "alarm.set" => crate::timers::alarm(arg(a, "time")?, a.text("label").unwrap_or("")),
@@ -167,6 +173,12 @@ impl Executor {
         match outcome {
             Ok(line) => {
                 let mut result = ExecutionResult::success().with_output(line);
+                if let Some(entry) = timer_entry {
+                    result = result
+                        .with_meta("timer_id", entry.id)
+                        .with_meta("timer_due", entry.due.to_string())
+                        .with_meta("timer_label", entry.label);
+                }
                 for entity in entities_for(&approved) {
                     result = result.with_entity(entity);
                 }

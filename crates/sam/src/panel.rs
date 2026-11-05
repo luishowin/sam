@@ -15,6 +15,7 @@ use sam_core::files::FileQuery;
 use sam_core::policy::{self, Approved, CORE_LEVEL, Decision, Origin, Pending};
 use sam_core::rank::{Candidate, Kind};
 use sam_core::trouble::Trouble;
+use sam_linux::config::Config;
 use sam_linux::executor::Executor;
 use sam_linux::log;
 use sam_voice::{Event as VoiceEvent, VoiceEngine};
@@ -46,6 +47,13 @@ pub struct Panel {
     entry: gtk::Entry,
     mic: gtk::Button,
     card: Surface,
+    timer_card: Surface,
+    timer_clock: gtk::Label,
+    timer_sub: gtk::Label,
+    timer_button: gtk::Button,
+    timer_due: Cell<Option<u64>>,
+    timer_id: RefCell<Option<String>>,
+    timer_source: RefCell<Option<glib::SourceId>>,
     list: gtk::ListBox,
     footer: gtk::Label,
     world: World,
@@ -54,9 +62,12 @@ pub struct Panel {
     generation: Cell<u64>,
     pending: RefCell<Option<(usize, Pending)>>,
     file_source: RefCell<Option<glib::SourceId>>,
-    voice: Option<VoiceEngine>,
+    voice: RefCell<Option<VoiceEngine>>,
+    voice_mode: String,
     listening: Cell<bool>,
     from_voice: Cell<bool>,
+    voice_cancelled: Cell<bool>,
+    voice_auto_run: bool,
 }
 
 impl Panel {
@@ -117,6 +128,35 @@ impl Panel {
         let card = Surface::natural(&card_content, SURFACE_WIDTH, CARD_RADIUS);
         card.set_visible(false);
 
+        let timer_clock = gtk::Label::builder()
+            .label("00:00")
+            .xalign(0.5)
+            .css_classes(["sam-timer-clock"])
+            .build();
+        let timer_sub = gtk::Label::builder()
+            .label("Sam timer")
+            .xalign(0.5)
+            .css_classes(["sam-timer-sub"])
+            .build();
+        let timer_button = gtk::Button::builder()
+            .label("Cancel timer")
+            .halign(gtk::Align::Center)
+            .css_classes(["sam-timer-button"])
+            .build();
+        let timer_content = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(10)
+            .margin_top(22)
+            .margin_bottom(18)
+            .margin_start(20)
+            .margin_end(20)
+            .build();
+        timer_content.append(&timer_clock);
+        timer_content.append(&timer_sub);
+        timer_content.append(&timer_button);
+        let timer_card = Surface::natural(&timer_content, SURFACE_WIDTH, CARD_RADIUS);
+        timer_card.set_visible(false);
+
         let frame = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(GAP)
@@ -126,14 +166,28 @@ impl Panel {
             .build();
         frame.append(&pill);
         frame.append(&card);
+        frame.append(&timer_card);
         window.set_content(Some(&frame));
 
-        let voice = VoiceEngine::spawn_default().ok();
+        let config = Config::load();
+        let voice_mode = config.voice_mode().to_owned();
+        let voice = if voice_mode == "eager" {
+            VoiceEngine::spawn_default().ok()
+        } else {
+            None
+        };
         let panel = Rc::new(Panel {
             window: window.clone(),
             entry,
             mic,
             card,
+            timer_card,
+            timer_clock,
+            timer_sub,
+            timer_button,
+            timer_due: Cell::new(None),
+            timer_id: RefCell::new(None),
+            timer_source: RefCell::new(None),
             list,
             footer,
             world: World::new(),
@@ -142,15 +196,35 @@ impl Panel {
             generation: Cell::new(0),
             pending: RefCell::new(None),
             file_source: RefCell::new(None),
-            voice,
+            voice: RefCell::new(voice),
+            voice_mode,
             listening: Cell::new(false),
             from_voice: Cell::new(false),
+            voice_cancelled: Cell::new(false),
+            voice_auto_run: config.voice.auto_run,
+        });
+
+        if panel.voice_mode == "off" {
+            panel.mic.set_sensitive(false);
+            panel
+                .mic
+                .set_tooltip_text(Some("Speech is off — run `sam config`"));
+        }
+
+        let p = panel.clone();
+        panel.timer_button.connect_clicked(move |_| {
+            p.timer_button_clicked();
+        });
+
+        let p = panel.clone();
+        panel.entry.connect_activate(move |_| {
+            p.activate_selected();
         });
 
         let p = panel.clone();
         panel.entry.connect_changed(move |entry| {
             if p.listening.get() && !p.from_voice.get() {
-                p.stop_listen();
+                p.cancel_listen();
             }
             p.refresh(entry.text().to_string());
         });
@@ -170,6 +244,7 @@ impl Panel {
         panel.mic.add_controller(gesture);
 
         let keys = gtk::EventControllerKey::new();
+        keys.set_propagation_phase(gtk::PropagationPhase::Capture);
         let p = panel.clone();
         keys.connect_key_pressed(move |_, key, _, _| p.key(key));
         panel.window.add_controller(keys);
@@ -177,9 +252,13 @@ impl Panel {
         let focus = gtk::EventControllerFocus::new();
         let p = panel.clone();
         focus.connect_leave(move |_| {
-            if !crate::trace::pinned() {
-                p.hide("focus");
+            if crate::trace::pinned() {
+                return;
             }
+            if p.timer_card.is_visible() && p.timer_due.get().is_some() {
+                return;
+            }
+            p.hide("focus");
         });
         panel.window.add_controller(focus);
 
@@ -191,7 +270,7 @@ impl Panel {
 
         // Speech events arrive on the worker thread; drain them on the main
         // loop so the panel never blocks on model load or inference.
-        if panel.voice.is_some() {
+        if panel.voice_mode != "off" {
             let p = panel.clone();
             glib::timeout_add_local(Duration::from_millis(50), move || {
                 p.poll_voice();
@@ -216,6 +295,10 @@ impl Panel {
         self.world.projects.refresh_if_stale();
         self.window.present();
         self.entry.grab_focus();
+        if self.timer_due.get().is_some_and(|due| due > now_secs()) {
+            self.card.set_visible(false);
+            self.timer_card.set_visible(true);
+        }
         trace!("shown");
     }
 
@@ -236,6 +319,80 @@ impl Panel {
         self.pending.borrow_mut().take();
         self.clear_rows();
         self.card.set_visible(false);
+        self.timer_card.set_visible(false);
+    }
+
+    // ---- timer card --------------------------------------------------------
+
+    fn timer_button_clicked(self: &Rc<Self>) {
+        if self.timer_due.get().is_some() {
+            self.cancel_timer();
+        } else {
+            self.hide("timer-close");
+        }
+    }
+
+    fn show_timer(self: &Rc<Self>, id: String, due: u64, label: &str) {
+        self.timer_due.set(Some(due));
+        self.timer_id.replace(Some(id));
+        self.timer_button.set_label("Cancel timer");
+        let when = glib::DateTime::from_unix_local(due as i64)
+            .ok()
+            .and_then(|d| d.format("%H:%M").ok())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+        self.timer_sub
+            .set_label(&format!("{label} · ends at {when}"));
+        self.card.set_visible(false);
+        self.timer_card.set_visible(true);
+        self.update_timer();
+        if self.timer_due.get().is_none() {
+            return;
+        }
+        if let Some(source) = self.timer_source.borrow_mut().take() {
+            source.remove();
+        }
+        let panel = self.clone();
+        let source = glib::timeout_add_seconds_local(1, move || {
+            panel.timer_source.borrow_mut().take();
+            if panel.update_timer() {
+                glib::ControlFlow::Continue
+            } else {
+                glib::ControlFlow::Break
+            }
+        });
+        *self.timer_source.borrow_mut() = Some(source);
+    }
+
+    fn update_timer(&self) -> bool {
+        let Some(due) = self.timer_due.get() else {
+            return false;
+        };
+        let now = now_secs();
+        if due <= now {
+            self.timer_due.set(None);
+            self.timer_id.replace(None);
+            self.timer_clock.set_label("00:00");
+            self.timer_sub.set_label("Time's up");
+            self.timer_button.set_label("Close");
+            return false;
+        }
+        let left = due - now;
+        self.timer_clock.set_label(&format_remaining(left));
+        true
+    }
+
+    fn cancel_timer(self: &Rc<Self>) {
+        if let Some(id) = self.timer_id.borrow().clone() {
+            let _ = sam_linux::timers::cancel(&id);
+        }
+        self.timer_due.set(None);
+        self.timer_id.replace(None);
+        if let Some(source) = self.timer_source.borrow_mut().take() {
+            source.remove();
+        }
+        self.timer_card.set_visible(false);
+        self.hide("timer-cancelled");
     }
 
     // ---- searching ---------------------------------------------------------
@@ -250,8 +407,12 @@ impl Panel {
             self.rows.borrow_mut().clear();
             self.clear_rows();
             self.card.set_visible(false);
+            if self.window.is_visible() && self.timer_due.get().is_some() {
+                self.timer_card.set_visible(true);
+            }
             return;
         }
+        self.timer_card.set_visible(false);
 
         let results = self.world.search(&text);
         let mut candidates = self.world.panel_rows(&results, ROWS * 2);
@@ -364,10 +525,16 @@ impl Panel {
 
     fn run(self: &Rc<Self>, approved: Approved, candidate: Candidate) {
         let action = approved.action().to_owned();
-        if LAUNCHES.contains(&action.as_str()) {
-            self.hide("launch");
-        } else {
-            self.hide("run");
+        let keep_open = matches!(
+            action.as_str(),
+            "timer.set" | "timer.cancel" | "timer.list" | "alarm.list" | "help.show" | "info.copy"
+        );
+        if !keep_open {
+            if LAUNCHES.contains(&action.as_str()) {
+                self.hide("launch");
+            } else {
+                self.hide("run");
+            }
         }
         // Panel-owned results never reach the OS executor.
         match action.as_str() {
@@ -403,12 +570,45 @@ impl Panel {
             _ => {}
         }
         let ctx = gtk::prelude::WidgetExt::display(&self.window).app_launch_context();
-        match self.executor.execute(approved, ctx.upcast_ref()) {
-            Ok(_) => {}
-            Err(e) => {
-                self.footer.set_label(&format!("{}: {e}", candidate.title));
-                log::warn("action-failed", Some(&action), e);
+        let result = self.executor.execute_result(approved, ctx.upcast_ref());
+        if !result.succeeded() {
+            let why = result
+                .error
+                .clone()
+                .unwrap_or_else(|| "it did not work".into());
+            self.footer.set_label(&format!("{}: {why}", candidate.title));
+            log::warn("action-failed", Some(&action), why);
+            return;
+        }
+        match action.as_str() {
+            "timer.set" => {
+                let id = result.metadata.get("timer_id").cloned().unwrap_or_default();
+                let due = result
+                    .metadata
+                    .get("timer_due")
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .unwrap_or(0);
+                let label = result
+                    .metadata
+                    .get("timer_label")
+                    .cloned()
+                    .unwrap_or_else(|| "Sam timer".into());
+                if due > now_secs() {
+                    self.show_timer(id, due, &label);
+                } else {
+                    self.footer.set_label("The timer could not be started");
+                }
             }
+            "timer.cancel" => {
+                self.timer_due.set(None);
+                self.timer_id.replace(None);
+                if let Some(source) = self.timer_source.borrow_mut().take() {
+                    source.remove();
+                }
+                self.timer_card.set_visible(false);
+                self.hide("timer-cancelled");
+            }
+            _ => {}
         }
     }
 
@@ -428,13 +628,8 @@ impl Panel {
                 }
                 glib::Propagation::Stop
             }
-            gdk::Key::Return | gdk::Key::KP_Enter => {
-                if let Some(row) = self.list.selected_row() {
-                    self.activate(row.index().max(0) as usize);
-                } else if let Some(first) = self.list.row_at_index(0) {
-                    self.list.select_row(Some(&first));
-                    self.activate(0);
-                }
+            gdk::Key::KP_Enter => {
+                self.activate_selected();
                 glib::Propagation::Stop
             }
             gdk::Key::Down => {
@@ -447,6 +642,29 @@ impl Panel {
             }
             _ => glib::Propagation::Proceed,
         }
+    }
+
+    fn activate_selected(self: &Rc<Self>) {
+        if let Some(row) = self.list.selected_row() {
+            self.activate(row.index().max(0) as usize);
+        } else if let Some(first) = self.list.row_at_index(0) {
+            self.list.select_row(Some(&first));
+            self.activate(0);
+        }
+    }
+
+    /// Development only: what Enter does, callable over D-Bus.
+    pub fn debug_enter(self: &Rc<Self>) {
+        self.activate_selected();
+    }
+
+    /// Development only: what a final voice transcript does.
+    pub fn debug_heard(self: &Rc<Self>, text: &str) {
+        self.from_voice.set(true);
+        self.entry.set_text(text);
+        self.entry.set_position(-1);
+        self.from_voice.set(false);
+        self.run_voice_text(text);
     }
 
     fn move_selection(&self, delta: i32) {
@@ -468,13 +686,28 @@ impl Panel {
     // ---- speech ------------------------------------------------------------
 
     fn start_listen(self: &Rc<Self>) {
-        let Some(voice) = &self.voice else {
-            self.footer
-                .set_label("Speech is unavailable — run `sam voice setup`");
+        if self.voice_mode == "off" {
+            self.footer.set_label("Speech is off — run `sam config`");
+            return;
+        }
+        if self.voice.borrow().is_none() {
+            match VoiceEngine::spawn_default() {
+                Ok(engine) => {
+                    *self.voice.borrow_mut() = Some(engine);
+                    self.footer
+                        .set_label("Loading the speech model — hold again when ready");
+                }
+                Err(e) => self.footer.set_label(&format!("Speech: {e}")),
+            }
+            return;
+        }
+        let voice = self.voice.borrow();
+        let Some(voice) = voice.as_ref() else {
             return;
         };
         match voice.start() {
             Ok(()) => {
+                self.voice_cancelled.set(false);
                 self.listening.set(true);
                 self.mic.add_css_class("listening");
                 self.footer.set_label("Listening… release to stop");
@@ -488,7 +721,7 @@ impl Panel {
         if !self.listening.replace(false) {
             return;
         }
-        if let Some(voice) = &self.voice
+        if let Some(voice) = self.voice.borrow().as_ref()
             && let Err(e) = voice.stop()
         {
             self.footer.set_label(&format!("Speech: {e}"));
@@ -500,10 +733,11 @@ impl Panel {
     }
 
     fn cancel_listen(&self) {
+        self.voice_cancelled.set(true);
         if !self.listening.replace(false) {
             return;
         }
-        if let Some(voice) = &self.voice {
+        if let Some(voice) = self.voice.borrow().as_ref() {
             let _ = voice.cancel();
         }
         self.mic.remove_css_class("listening");
@@ -511,10 +745,11 @@ impl Panel {
     }
 
     fn poll_voice(self: &Rc<Self>) {
-        let Some(voice) = &self.voice else {
-            return;
+        let events: Vec<VoiceEvent> = match self.voice.borrow().as_ref() {
+            Some(voice) => voice.drain_events(),
+            None => return,
         };
-        for event in voice.drain_events() {
+        for event in events {
             match event {
                 VoiceEvent::ModelsLoading => {
                     self.mic.set_tooltip_text(Some("Loading the local speech model…"));
@@ -529,7 +764,7 @@ impl Panel {
                     self.footer.set_label("Listening… release to stop");
                 }
                 VoiceEvent::Partial(text) => {
-                    if !text.is_empty() {
+                    if !self.voice_cancelled.get() && !text.is_empty() {
                         self.from_voice.set(true);
                         self.entry.set_text(&text);
                         self.entry.set_position(-1);
@@ -537,15 +772,26 @@ impl Panel {
                     }
                 }
                 VoiceEvent::Final(text) => {
+                    let cancelled = self.voice_cancelled.replace(false);
+                    self.listening.set(false);
+                    self.mic.remove_css_class("listening");
+                    if cancelled {
+                        self.footer.set_label("↑↓ choose · ↵ open · esc close");
+                        continue;
+                    }
                     if !text.is_empty() {
                         self.from_voice.set(true);
                         self.entry.set_text(&text);
                         self.entry.set_position(-1);
                         self.from_voice.set(false);
+                        self.footer
+                            .set_label(&format!("Heard “{text}” · running…"));
+                        if self.voice_auto_run {
+                            self.run_voice_text(&text);
+                        }
+                    } else {
+                        self.footer.set_label("Nothing heard · try again");
                     }
-                    self.listening.set(false);
-                    self.mic.remove_css_class("listening");
-                    self.footer.set_label("↑↓ choose · ↵ open · esc close");
                 }
                 VoiceEvent::Failed(text) => {
                     self.listening.set(false);
@@ -553,6 +799,45 @@ impl Panel {
                     self.footer.set_label(&format!("Speech: {text}"));
                 }
             }
+        }
+    }
+
+    /// Voice is an input method, not a separate reasoning path. After the
+    /// final transcript, run one safe result: an explicit open verb, or a
+    /// quick-action command. Information, files and search results stay on
+    /// screen for review. A risky action still asks.
+    fn run_voice_text(self: &Rc<Self>, text: &str) {
+        let Some(top) = self.rows.borrow().first().cloned() else {
+            self.footer.set_label("No match · refine or press ↵");
+            return;
+        };
+        if top.score < 0.6 {
+            self.footer.set_label("No confident match · review the list");
+            return;
+        }
+        let words: Vec<String> = text
+            .to_lowercase()
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .map(str::to_owned)
+            .collect();
+        let first = words.first().map(String::as_str).unwrap_or("");
+        let explicit_open = matches!(
+            first,
+            "open" | "launch" | "start" | "show" | "run" | "reveal"
+        ) || text.to_lowercase().starts_with("go to ");
+        let runnable = matches!(top.kind, Kind::Command)
+            || (explicit_open
+                && matches!(
+                    top.kind,
+                    Kind::App | Kind::Place | Kind::File | Kind::Folder | Kind::Setting
+                        | Kind::Site | Kind::Doc
+                ));
+        if runnable {
+            self.activate(0);
+        } else {
+            self.footer
+                .set_label("Heard · review the result, ↵ runs it");
         }
     }
 
@@ -573,6 +858,23 @@ impl Panel {
         let viewport = gtk::graphene::Rect::new(0.0, 0.0, width, height);
         let texture = renderer.render_texture(&node, Some(&viewport));
         let _ = texture.save_to_png(path);
+    }
+}
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
+}
+
+fn format_remaining(seconds: u64) -> String {
+    let h = seconds / 3_600;
+    let m = (seconds % 3_600) / 60;
+    let s = seconds % 60;
+    if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m:02}:{s:02}")
     }
 }
 

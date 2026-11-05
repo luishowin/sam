@@ -85,7 +85,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 
 %files
 %license LICENSE
-%doc README.md docs/fedora-prototype.md docs/migration-from-ida.md docs/design/SPEECH_GUIDE.md
+%doc README.md docs/fedora-prototype.md docs/migration-from-ida.md docs/gnome-limitations.md docs/design/SPEECH_GUIDE.md
 %{_bindir}/sam
 %{_bindir}/sam-voice
 %{_datadir}/applications/%{app_id}.desktop

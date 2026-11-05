@@ -27,6 +27,8 @@ USAGE
   sam voice [status|setup]    the local speech model and microphone
   sam setup [--undo]          take Super+Space for Sam and enable its service
   sam serve [--socket PATH]   local JSON API over a Unix socket
+  sam config                  terminal configuration menu
+  sam status                  status, version, service and memory
   sam doctor                  versions, sources and action count
   sam log [journalctl args]   what went wrong today, from the journal
   sam --gapplication-service  run hidden, as the systemd unit does
@@ -45,6 +47,8 @@ fn main() -> ExitCode {
         Some("voice") => cli::voice(&args[2..]),
         Some("doctor") => cli::doctor(),
         Some("serve") => serve::serve(&args[2..]),
+        Some("config") => cli::config(&args[2..]),
+        Some("status") => cli::status(),
         Some("log") => cli::log(&args[2..]),
         Some("notify") => cli::notify(&args[2..]),
         Some("show") => app::show_remote(&args[2..].join(" ")),

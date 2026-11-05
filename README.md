@@ -360,6 +360,8 @@ See [docs/security-and-privacy.md](docs/security-and-privacy.md).
 - `crates/sam` — GTK4/libadwaita panel, CLI, setup and GApplication service;
 - a hand-authored registry covering apps, files, folders, settings, live system state,
   hardware, networking and local documentation;
+- push-to-talk voice, immediate safe execution and a live timer card;
+- a terminal configuration menu (`sam config`) and a Unix-socket JSON API;
 - unit tests, live-source checks, a benchmark command and an RPM build.
 
 This machine now runs Sam instead of Ida. The migration is recorded in
@@ -440,5 +442,6 @@ MIT-licensed projects.
 
 - Fedora prototype: [docs/fedora-prototype.md](docs/fedora-prototype.md)
 - Migration from Ida: [docs/migration-from-ida.md](docs/migration-from-ida.md)
+- GNOME limitations: [docs/gnome-limitations.md](docs/gnome-limitations.md)
 - Essential OS project record: <https://github.com/luishowin/essential-os>
 - Ida, the personal assistant: <https://github.com/luishowin/ida>

@@ -65,45 +65,115 @@ fn human(seconds: u64) -> String {
     parts.join(" ")
 }
 
-/// `10m`, `1h30m`, `90s`, `2h`.
+/// `10m`, `10 minutes`, `five minutes`, `1h30m`, `90s`, `2h`,
+/// `half an hour`, `one hour thirty minutes`.
 pub fn parse_duration(text: &str) -> Result<u64, ExecError> {
-    let text = text.trim().to_lowercase();
+    let mut text = text.trim().to_lowercase();
     if text.is_empty() {
         return Err(ExecError("a duration is needed, such as 10m".into()));
     }
-    let mut total = 0u64;
-    let mut number = String::new();
-    let mut any = false;
-    for ch in text.chars() {
-        if ch.is_ascii_digit() {
-            number.push(ch);
+    // Spoken forms that are easier to handle before tokenising.
+    for (phrase, value) in [
+        ("half an hour", "0.5 hour"),
+        ("half a hour", "0.5 hour"),
+        ("half hour", "0.5 hour"),
+        ("quarter of an hour", "0.25 hour"),
+        ("quarter hour", "0.25 hour"),
+        ("an hour", "1 hour"),
+        ("a hour", "1 hour"),
+        ("an minute", "1 minute"),
+        ("a minute", "1 minute"),
+    ] {
+        text = text.replace(phrase, value);
+    }
+    // Split compact forms: 1h30m, 5min, 90s, 1.5h.
+    let mut spaced = String::with_capacity(text.len() + 8);
+    let chars: Vec<char> = text.chars().collect();
+    for (i, c) in chars.iter().enumerate() {
+        spaced.push(*c);
+        if let Some(next) = chars.get(i + 1) {
+            let boundary = (c.is_ascii_digit() && next.is_ascii_alphabetic())
+                || (c.is_ascii_alphabetic() && next.is_ascii_digit());
+            if boundary {
+                spaced.push(' ');
+            }
+        }
+    }
+
+    let words: Vec<&str> = spaced
+        .split(|c: char| c.is_whitespace() || c == ',' || c == '-')
+        .filter(|w| !w.is_empty() && !matches!(*w, "and" | "for" | "about" | "around"))
+        .collect();
+    if words.is_empty() {
+        return Err(ExecError("a duration is needed, such as 10m".into()));
+    }
+
+    let mut total = 0.0f64;
+    let mut pending: Option<f64> = None;
+    let mut any_unit = false;
+    for word in words {
+        if let Some(n) = number_word(word).or_else(|| word.parse::<f64>().ok()) {
+            pending = Some(pending.unwrap_or(0.0) + n);
             continue;
         }
-        let value: u64 = number
-            .parse()
-            .map_err(|_| ExecError(format!("{text:?} is not a duration")))?;
-        number.clear();
-        let unit = match ch {
-            's' => 1,
-            'm' => 60,
-            'h' => 3_600,
-            'd' => 86_400,
-            _ => return Err(ExecError(format!("{ch:?} is not a duration unit"))),
+        let unit = match word {
+            "s" | "sec" | "secs" | "second" | "seconds" => 1.0,
+            "m" | "min" | "mins" | "minute" | "minutes" => 60.0,
+            "h" | "hr" | "hrs" | "hour" | "hours" => 3_600.0,
+            "d" | "day" | "days" => 86_400.0,
+            _ => {
+                return Err(ExecError(format!("{word:?} is not a duration unit")));
+            }
         };
+        let value = pending.take().unwrap_or(1.0);
         total += value * unit;
-        any = true;
+        any_unit = true;
     }
-    if !number.is_empty() {
-        // Bare seconds: "90".
-        total += number
-            .parse::<u64>()
-            .map_err(|_| ExecError(format!("{text:?} is not a duration")))?;
-        any = true;
+    if let Some(value) = pending {
+        // A bare number means seconds, as before.
+        total += value;
+        any_unit = true;
     }
-    if !any || total == 0 {
+    if !any_unit || !total.is_finite() || total < 1.0 {
         return Err(ExecError("a duration must be at least one second".into()));
     }
-    Ok(total.min(7 * 86_400))
+    let seconds = total.round() as u64;
+    Ok(seconds.min(7 * 86_400))
+}
+
+fn number_word(word: &str) -> Option<f64> {
+    Some(match word {
+        "zero" => 0.0,
+        "one" => 1.0,
+        "two" => 2.0,
+        "three" => 3.0,
+        "four" => 4.0,
+        "five" => 5.0,
+        "six" => 6.0,
+        "seven" => 7.0,
+        "eight" => 8.0,
+        "nine" => 9.0,
+        "ten" => 10.0,
+        "eleven" => 11.0,
+        "twelve" => 12.0,
+        "thirteen" => 13.0,
+        "fourteen" => 14.0,
+        "fifteen" => 15.0,
+        "sixteen" => 16.0,
+        "seventeen" => 17.0,
+        "eighteen" => 18.0,
+        "nineteen" => 19.0,
+        "twenty" => 20.0,
+        "thirty" => 30.0,
+        "forty" => 40.0,
+        "fifty" => 50.0,
+        "sixty" => 60.0,
+        "seventy" => 70.0,
+        "eighty" => 80.0,
+        "ninety" => 90.0,
+        "hundred" => 100.0,
+        _ => return None,
+    })
 }
 
 fn next_alarm(text: &str) -> Result<u64, ExecError> {
@@ -185,7 +255,13 @@ fn schedule(entry: &Entry) -> Result<(), ExecError> {
     }
 }
 
-pub fn set(duration: &str, label: &str) -> Result<String, ExecError> {
+/// A started timer, with the entry the panel needs for its countdown.
+pub struct Started {
+    pub message: String,
+    pub entry: Entry,
+}
+
+pub fn set_entry(duration: &str, label: &str) -> Result<Started, ExecError> {
     let seconds = parse_duration(duration)?;
     let due = now() + seconds;
     let entry = Entry {
@@ -202,7 +278,14 @@ pub fn set(duration: &str, label: &str) -> Result<String, ExecError> {
     let mut entries = load();
     entries.push(entry.clone());
     save(&entries)?;
-    Ok(format!("Timer set for {} · {}", human(seconds), entry.label))
+    Ok(Started {
+        message: format!("Timer set for {} · {}", human(seconds), entry.label),
+        entry,
+    })
+}
+
+pub fn set(duration: &str, label: &str) -> Result<String, ExecError> {
+    set_entry(duration, label).map(|started| started.message)
 }
 
 pub fn alarm(time: &str, label: &str) -> Result<String, ExecError> {
@@ -265,7 +348,7 @@ pub fn cancel(which: &str) -> Result<String, ExecError> {
     } else {
         entries
             .iter()
-            .position(|e| e.label.to_lowercase().contains(&which))
+            .position(|e| e.id == which || e.label.to_lowercase().contains(&which))
             .ok_or_else(|| ExecError(format!("no timer matches {which:?}")))?
     };
     if index >= entries.len() {
@@ -311,6 +394,13 @@ mod tests {
         assert_eq!(parse_duration("10m").unwrap(), 600);
         assert_eq!(parse_duration("1h30m").unwrap(), 5_400);
         assert_eq!(parse_duration("90s").unwrap(), 90);
+        assert_eq!(parse_duration("5 minutes").unwrap(), 300);
+        assert_eq!(parse_duration("five minutes").unwrap(), 300);
+        assert_eq!(parse_duration("1 hour 30 minutes").unwrap(), 5_400);
+        assert_eq!(parse_duration("half an hour").unwrap(), 1_800);
+        assert_eq!(parse_duration("1.5 hours").unwrap(), 5_400);
+        assert_eq!(parse_duration("twenty five minutes").unwrap(), 1_500);
+        assert_eq!(parse_duration("2 hrs").unwrap(), 7_200);
         assert!(parse_duration("nope").is_err());
         assert!(parse_duration("0s").is_err());
     }
