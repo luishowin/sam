@@ -172,6 +172,30 @@ push-to-talk. `sam config` can switch to `lazy` (first press loads the model)
 or `off` (no speech worker; roughly the non-voice footprint). Idle CPU, not
 resident memory, is the battery-relevant number; it is near zero after warm-up.
 
+## Changes in the installed build (2026-11-05)
+
+- **Icon:** full-bleed crop with the SAM SEE text preserved; the empty 28 px
+  frame is gone.
+- **Enter:** the search entry now activates the selected row, and
+  Up/Down/Escape are handled in the capture phase. `clock` → Enter opens
+  GNOME Clocks.
+- **Voice:** a final transcript runs one safe result immediately. Explicit
+  open/launch verbs open the top app, place, file, setting, site or manual;
+  quick-action commands run; information and file results stay for review;
+  risky actions stay in the confirmation state. `find`/`search`/`where`
+  results wait for a pick.
+- **Durations:** `5 minutes`, `five minutes`, `1 hour 30 minutes`,
+  `half an hour`, `1h30m`, `90 seconds` and `2 hrs` all parse.
+- **Timer card:** a Sam-owned timer shows a live countdown, a Cancel button and
+  stays until cancelled or finished. GNOME Clocks has no start-timer API; see
+  [`gnome-limitations.md`](gnome-limitations.md).
+- **Config menu:** `sam config` provides status, version, service control,
+  voice on/off and eager/lazy/off modes, model setup, memory/CPU, config path
+  and setup rerun. `sam status` and `sam config get/set` are scriptable.
+- **Measured footprint:** voice eager ≈ 248 MB PSS / 276 MB RSS / 78 threads;
+  voice lazy or off ≈ 46 MB RSS / 7 threads; idle CPU ≈ 0.0% with about 20
+  voluntary context switches per second.
+
 ## Known limitations
 
 - The panel is a Fedora/GNOME prototype, not the Essential OS shell.
