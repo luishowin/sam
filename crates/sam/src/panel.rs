@@ -204,6 +204,7 @@ impl Panel {
     }
 
     pub fn show(self: &Rc<Self>) {
+        self.world.projects.refresh_if_stale();
         self.window.present();
         self.entry.grab_focus();
         trace!("shown");

@@ -29,7 +29,7 @@ impl World {
     pub fn new() -> World {
         let config = Config::load();
         let projects = ProjectIndex::new(config.project_roots(), config.projects.depth);
-        World {
+        let world = World {
             engine: Engine::new(),
             apps: AppIndex::new(),
             files: Arc::new(FileIndex::new(projects.clone())),
@@ -38,7 +38,9 @@ impl World {
             info: SystemInfo,
             docs: Docs,
             settings: Settings,
-        }
+        };
+        world.projects.refresh_if_stale();
+        world
     }
 
     /// The synchronous half of a query: everything but files.

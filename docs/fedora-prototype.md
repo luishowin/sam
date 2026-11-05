@@ -71,8 +71,12 @@ The guide is preserved at [`design/SPEECH_GUIDE.md`](design/SPEECH_GUIDE.md).
 - Moonshine Small Streaming English only.
 - Push-to-talk: hold the microphone, release to stop.
 - Models live under `~/.local/share/sam/models/moonshine-streaming/`.
-- `sam voice status` reports the model path; `sam voice setup` reports the
-  expected layout and download state.
+- `sam voice status` reports the model path; `sam voice setup` downloads and
+  verifies the pinned archive (`sha256 dbb3e1c1…`). `--archive PATH` installs
+  an offline copy.
+- The model is loaded once by the service and kept warm. Measured load is about
+  0.44 s warm and about 1.0 s cold; a 4 s clip transcribes in about 0.34 s on
+  this CPU (≈11× realtime).
 - If the model or microphone is unavailable, the panel still opens and typing
   still works.
 
@@ -122,19 +126,26 @@ and must be re-measured on the minimum reference machine.
 | Registry/engine query, warm | 3–6 ms typical |
 | Complete LocalSearch query | 10–55 ms |
 | Live system answer | 3–30 ms |
-| Idle service RSS | see `sam doctor` and the journal after packaging |
+| Idle service RSS, speech model warm | ~295 MB |
+| Idle service RSS, without speech | ~15 MB |
 | Network egress | none in the Sam process |
 | Generative model | none in the runtime |
 
 The `sam bench` command prints current medians for a fixed phrase set.
+
+The speech model takes the process above Sam's provisional 250 MB typical
+target. On this 16 GB machine that is an accepted trade for instant
+push-to-talk. On a 4 GB machine the next step is to make the model load lazy,
+or unload it after a bounded idle period, at the cost of the first syllable.
 
 ## Known limitations
 
 - The panel is a Fedora/GNOME prototype, not the Essential OS shell.
 - File search depends on LocalSearch indexing; the fallback walk is bounded.
 - Local documentation is name-level only, not full-text.
-- Speech model download is a documented manual step until a verified source
-  URL is pinned.
+- The speech model is downloaded by `sam voice setup`; it is not shipped in
+  the RPM. Its 158 MB on disk and ~280 MB resident cost exceed the provisional
+  4 GB budget.
 - Settings navigation uses GNOME panel IDs; other desktops need their own map.
 - The typed local API is the CLI's JSON output today; a Unix-socket service is
   the next step.

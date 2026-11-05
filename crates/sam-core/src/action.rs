@@ -148,9 +148,9 @@ const fn spec(
     }
 }
 
-use Confirmation::{Always, Never, WhenAmbiguous};
-use Handler::{Mic, Net, Os, Panel};
-use Permission::{Destructive, Execute, LowRisk, Privileged, Read};
+use Confirmation::{Always, Never};
+use Handler::{Os, Panel};
+use Permission::{Destructive, LowRisk, Privileged, Read};
 
 /// Every action Core knows (§7). Questions, weather and listening are
 /// LowRisk, not Read: at L1 a Read action runs as the user types, and

@@ -738,3 +738,44 @@ impl Provider for Settings {
 pub fn exists(path: &str) -> bool {
     Path::new(path).exists()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sam_core::engine::Engine;
+    use sam_core::rank::Scorer;
+
+    fn provide(query: &str) -> Vec<Candidate> {
+        let engine = Engine::new();
+        let q = engine.parse(query, &crate::host::LinuxHost);
+        let mut out = Vec::new();
+        SystemInfo.provide(&q, &Scorer::new(), &mut out);
+        out
+    }
+
+    #[test]
+    fn memory_and_disk_are_answered() {
+        let memory = provide("what is using my RAM");
+        assert_eq!(memory.len(), 1, "{memory:#?}");
+        assert!(memory[0].title.starts_with("RAM:"), "{}", memory[0].title);
+        assert_eq!(memory[0].intent.action, "info.copy");
+
+        let disk = provide("how much disk space is free");
+        assert_eq!(disk.len(), 1, "{disk:#?}");
+        assert!(disk[0].title.starts_with("Disk:"), "{}", disk[0].title);
+    }
+
+    #[test]
+    fn the_settings_map_finds_a_panel() {
+        let engine = Engine::new();
+        let q = engine.parse("where is night light settings", &crate::host::LinuxHost);
+        let mut out = Vec::new();
+        Settings.provide(&q, &Scorer::new(), &mut out);
+        assert_eq!(out.len(), 1, "{out:#?}");
+        assert_eq!(out[0].intent.action, "app.launch");
+        assert_eq!(
+            out[0].intent.text("app_id"),
+            Some("gnome-color-panel.desktop")
+        );
+    }
+}

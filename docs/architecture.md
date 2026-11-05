@@ -1,9 +1,10 @@
 # Architecture
 
-**Status:** Design · **Scope:** Sam runtime, process boundaries and failure behaviour
+**Status:** Fedora prototype · **Scope:** Sam runtime, process boundaries and failure behaviour
 
-This document describes the intended architecture. Sam is not implemented yet; nothing here
-is a claim about existing code.
+This document describes the intended architecture and the first implemented slice. The
+Fedora prototype is real; the Essential OS service and release gates are not. See
+[`fedora-prototype.md`](fedora-prototype.md) for what runs today.
 
 ---
 
@@ -72,8 +73,10 @@ No component performs generation, planning, autonomous retries or conversation m
 - It has **read-only** access to approved local sources. It is not a privileged executor.
 - It exposes a typed local API over an appropriate local IPC mechanism. The contract never
   accepts arbitrary executable instructions or unrestricted shell text.
-- State-changing operations are outside Sam. A result action is a constrained proposal that
-  the caller must revalidate and perform through the OS capability layer or Ida's executor.
+- The Sam engine returns constrained action proposals. In the Fedora prototype the panel is
+  also the caller: it revalidates an intent through the registry and policy table, then runs
+  one fixed handler. It never builds a shell command from user text. On Essential OS the same
+  proposals may be performed by the OS capability layer or Ida's executor.
 - Sam never receives secrets, credentials or unrestricted filesystem access.
 
 ## Failure behaviour
@@ -91,8 +94,7 @@ No component performs generation, planning, autonomous retries or conversation m
 
 ## Scaling stance
 
-The first implementation should be a single local process with a flat registry and flat
-vector index. Separate indexing workers, disk-backed indexes or partitioned services are
+The first implementation is a single local process with a flat registry and no vector index. Separate indexing workers, disk-backed indexes or partitioned services are
 justified only when measurement shows the simple design cannot meet the targets.
 
 ## Explicit non-goals

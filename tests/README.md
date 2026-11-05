@@ -1,6 +1,6 @@
 # Tests
 
-**Status: planning only.** No test suite exists yet.
+**Status:** Fedora prototype suite exists. It covers the core, adapters, voice and a frozen command corpus; the full evaluation, 4 GB and failure-injection gates are still pending.
 
 Testing Sam is primarily the testing of retrieval quality, deterministic execution, resource
 behaviour and the product boundary. The intended layers are below.

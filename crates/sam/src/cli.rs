@@ -408,14 +408,25 @@ pub fn notify(args: &[String]) -> ExitCode {
 
 pub fn doctor() -> ExitCode {
     let world = World::new();
+    world.projects.refresh_now();
     println!("Sam {}", env!("CARGO_PKG_VERSION"));
     println!("app id:    {}", sam_core::APP_ID);
     println!("config:    {}", Config::path().display());
-    println!("projects:  {} roots", world.projects.projects().len());
+    println!("projects:  {}", world.projects.projects().len());
     println!("apps:      {} entries", world.apps.entries().len());
     println!("files:     LocalSearch adapter");
     println!("actions:   {}", Registry::core().specs().len());
     println!("network:   none (Sam has no egress)");
+    let speech = sam_voice::model_status_for_root(&sam_voice::default_models_root());
+    println!(
+        "speech:    {}",
+        if speech.is_present() { "ready" } else { "missing" }
+    );
+    if let Ok(status) = std::fs::read_to_string("/proc/self/status")
+        && let Some(line) = status.lines().find(|l| l.starts_with("VmRSS:"))
+    {
+        println!("rss:       {}", line.trim_start_matches("VmRSS:").trim());
+    }
     let mut out = std::io::stdout();
     let _ = writeln!(out);
     ExitCode::SUCCESS

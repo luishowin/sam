@@ -1,21 +1,21 @@
 # Registry
 
-This directory will hold Sam's versioned search registry: canonical intents, domains,
-phrasings, synonyms, slots, sources, handler identifiers, response schemas, fallback rules,
-cache policies and evaluation cases.
+Sam's registry is split into two layers in the Fedora prototype:
 
-**Status: empty by design.** No registry entries exist yet. The schema is described in
-[`../docs/registry-design.md`](../docs/registry-design.md) and is not final.
+- `data/intents.toml` — the grammar-driven commands and quick actions. Each
+  entry has an action, title, icon, fixed arguments and phrases.
+- live providers in `crates/sam-linux/src/info.rs` — system information,
+  settings navigation and local documentation. Each provider emits the same
+  `Candidate`/`Intent` shape as the grammar.
 
-## Intended layout
+The long-term versioned registry described in
+[`../docs/registry-design.md`](../docs/registry-design.md) will absorb both.
+
+## Layout
 
 ```text
 registry/
-├── domains/          domain definitions and source mappings
-├── intents/          canonical entries, grouped by domain
-├── schemas/          machine-readable entry and response schemas
-├── embeddings/       compiled vectors and encoder metadata (build artifact)
-├── eval/             frozen evaluation sets
+├── eval/queries.toml   frozen command corpus, exercised by sam-core tests
 └── README.md
 ```
 
@@ -23,9 +23,10 @@ registry/
 
 - One canonical capability per entry; many phrasings per capability.
 - Every entry names a real, approved local source and a version-controlled handler.
-- No entry ships without positive, ambiguous, negative and out-of-domain evaluation cases.
+- No entry ships without positive, ambiguous, negative and out-of-domain
+  evaluation cases.
 - Generated content is reviewed before it is committed.
-- Registry, handlers, embeddings and index schema are versioned together.
+- Registry, handlers and schema are versioned together.
 
-Do not add speculative entries to this directory before the schema and source catalogue are
-settled. Proposals belong in an issue or a design discussion first.
+The current corpus is deliberately small. Add a case only when the capability
+and its handler are tested.

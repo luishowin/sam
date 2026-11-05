@@ -1,0 +1,114 @@
+# Frozen evaluation corpus for the Fedora prototype.
+#
+# Add a case only when it is a real capability and the handler is tested.
+# Run with: cargo test -p sam-core --test eval
+
+[[case]]
+query = "lock my computer"
+action = "system.lock"
+kind = "Command"
+
+[[case]]
+query = "turn off bluetooth"
+action = "bluetooth.set"
+kind = "Command"
+
+[[case]]
+query = "turn on wi-fi"
+action = "wifi.set"
+kind = "Command"
+
+[[case]]
+query = "volume up"
+action = "audio.volume"
+kind = "Command"
+
+[[case]]
+query = "set volume to 35"
+action = "audio.volume_set"
+kind = "Command"
+
+[[case]]
+query = "pause music"
+action = "media.control"
+kind = "Command"
+
+[[case]]
+query = "next track"
+action = "media.control"
+kind = "Command"
+
+[[case]]
+query = "skip forward 30 seconds"
+action = "media.seek"
+kind = "Command"
+
+[[case]]
+query = "dark mode on"
+action = "appearance.dark"
+kind = "Command"
+
+[[case]]
+query = "do not disturb on"
+action = "notifications.dnd"
+kind = "Command"
+
+[[case]]
+query = "night light off"
+action = "display.night_light"
+kind = "Command"
+
+[[case]]
+query = "set night light to 3000"
+action = "display.night_light_temperature"
+kind = "Command"
+
+[[case]]
+query = "airplane mode on"
+action = "system.airplane"
+kind = "Command"
+
+[[case]]
+query = "power saver mode"
+action = "power.profile"
+kind = "Command"
+
+[[case]]
+query = "open terminal"
+action = "terminal.open"
+kind = "Command"
+
+[[case]]
+query = "set a timer for 10m"
+action = "timer.set"
+kind = "Command"
+
+[[case]]
+query = "list timers"
+action = "timer.list"
+kind = "Command"
+
+[[case]]
+query = "set alarm for 07:30"
+action = "alarm.set"
+kind = "Command"
+
+[[case]]
+query = "cancel alarm"
+action = "alarm.cancel"
+kind = "Command"
+
+[[case]]
+query = "open my downloads"
+action = "place.open"
+kind = "Place"
+
+[[case]]
+query = "17 * 42"
+action = "clipboard.copy"
+kind = "Calculation"
+
+[[case]]
+query = "100 km in miles"
+action = "clipboard.copy"
+kind = "Conversion"

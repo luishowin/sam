@@ -1,6 +1,6 @@
 # Security and privacy
 
-**Status:** Design · **Scope:** Sam's trust boundary and data handling
+**Status:** Fedora prototype · **Scope:** Sam's trust boundary and data handling
 
 Sam is a read-oriented local service. Its security posture is simple to state: it can read
 only what it is given permission to read, it has no network egress, and it cannot change the
@@ -10,7 +10,9 @@ system.
 
 ## Principles
 
-1. **Read-only.** Sam retrieves and presents. It never changes OS state.
+1. **Read-oriented.** Sam retrieves and presents. Its Fedora panel performs only the fixed,
+   registry-approved actions listed in [`fedora-prototype.md`](fedora-prototype.md); the
+   search engine itself returns inert proposals.
 2. **No egress.** The Sam process makes no outbound network connections, including to local
    model endpoints.
 3. **Least access.** Only approved roots, sources and interfaces are readable.
@@ -42,6 +44,23 @@ persuasive text. Even so:
 - handlers never evaluate text as code or as a query language command;
 - any text inserted into a response template is escaped and bounded;
 - a result never claims more than its source supports.
+
+## Speech input
+
+- Speech is an input method, not a generative path. Moonshine Streaming transcribes audio to
+  text; the text enters the same registry pipeline as typed text.
+- Audio is held in memory for the utterance and discarded. It is not written to disk unless
+  the user asks for a diagnostic capture.
+- The model is loaded from `~/.local/share/sam/models`; nothing is fetched at runtime.
+- `sam voice setup` is the only speech path that uses the network. It downloads a pinned,
+  hash-verified archive once.
+
+## Fixed actions
+
+The Fedora panel is the caller for its own result actions. Every action is validated against
+the registry, decided by the policy table and run by one fixed handler. User text never
+becomes a shell command. The risky actions (suspend, log out, restart, power off) require a
+second confirmation.
 
 ## Cache sensitivity
 

@@ -38,6 +38,7 @@ custom shortcut and unit were removed in the order Ida itself expects.
 
 - the `sam` RPM
 - `/usr/bin/sam`
+- `/usr/bin/sam-voice`
 - `io.github.luishowin.Sam.service` and its D-Bus service
 - `io.github.luishowin.Sam.desktop`
 - `io.github.luishowin.Sam` icon (PNG and SVG)

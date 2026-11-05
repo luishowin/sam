@@ -1,6 +1,6 @@
 # Integration with Ida
 
-**Status:** Design · **Scope:** The boundary between Sam and Ida
+**Status:** Design; Fedora prototype uses the panel as caller · **Scope:** The boundary between Sam and Ida
 
 Sam and Ida are separate products that cooperate through a typed interface. This document
 defines that boundary. It does not describe an implemented API.

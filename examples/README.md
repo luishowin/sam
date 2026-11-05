@@ -1,7 +1,7 @@
 # Examples
 
-**Status: intentionally empty.** Sam has no implementation, so there are no runnable examples.
-Nothing here should be mistaken for working code.
+**Status:** The Fedora prototype has runnable examples through the `sam` CLI. This directory
+still holds no standalone samples; see `docs/fedora-prototype.md` for the CLI.
 
 When implementation begins, this directory should hold small, honest examples:
 

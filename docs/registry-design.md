@@ -1,6 +1,10 @@
 # Registry design
 
-**Status:** Design · **Scope:** Sam's search registry
+**Status:** Design with a hand-authored prototype registry · **Scope:** Sam's search registry
+
+The Fedora prototype's registry is `data/intents.toml` for grammar and actions, plus live
+providers for system information and documentation. The build-time authoring pipeline below
+is still the intended long-term form.
 
 The registry is the central source of truth for what Sam supports. Each canonical capability
 is represented once and may carry many phrasings. Registry data is versioned, reviewable,

@@ -2,9 +2,9 @@
 
 **Status:** Provisional engineering targets · **Scope:** Sam runtime on low-resource hardware
 
-> **These are planning budgets, not measurements.** No part of Sam has been benchmarked.
-> Numbers become release gates only after Phase S0 measures the complete pipeline on the
-> minimum reference machine.
+> **These are planning budgets, not measurements.** The Fedora prototype has development-
+> laptop measurements, but the minimum reference machine and release gates are still pending.
+> See [`fedora-prototype.md`](fedora-prototype.md).
 
 ---
 
@@ -13,6 +13,21 @@
 Sam should run comfortably on a computer with **4 GB of total system RAM**, alongside a real
 desktop session. That is a system-compatibility goal, not permission for Sam to consume all
 available memory.
+
+## Measured on the development laptop
+
+| Metric | Observed |
+|---|---:|
+| Registry/engine query, warm | 3–6 ms typical |
+| Complete LocalSearch query | 10–55 ms |
+| Live system answer | 3–30 ms |
+| Speech model load, warm | ~0.44 s |
+| Speech inference, 4 s clip | ~0.34 s |
+| Idle service RSS, speech warm | ~295 MB |
+| Idle service RSS, no speech | ~15 MB |
+
+The speech model takes the process above the provisional 250 MB typical target. On a 4 GB
+machine the next step is lazy load or idle unload, measured rather than assumed.
 
 ## Targets
 

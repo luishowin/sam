@@ -88,14 +88,10 @@ impl Results {
 const FALLBACK_SCORE: f32 = 0.05;
 /// "Ask Sam" for text shaped like a question: above anything but a whole
 /// command or a pinned row (§15).
-const QUESTION_SCORE: f32 = 0.96;
 /// "Ask Sam" for several words that nothing else matched well: first,
 /// unless a file's name matches.
-const ASK_SCORE: f32 = 0.49;
 /// "Ask Sam" under good matches: last but for the file-search fallback.
-const ASK_LAST_SCORE: f32 = 0.06;
 /// The Ask row's icon, installed with SAM.
-pub const SPARKLE_ICON: &str = "io.github.luishowin.Sam-sparkle-symbolic";
 /// Calculations, conversions and typed paths go first.
 const PINNED: f32 = 1.5;
 /// Below this, the interpreter (if any) is asked. Model-suggested rows
@@ -476,20 +472,6 @@ fn best_score(rows: &[Candidate], query: &Query) -> f32 {
         .filter(|c| !matches!(c.kind, Kind::Search | Kind::Answer))
         .map(|c| c.score * weight(c.kind, query))
         .fold(0.0, f32::max)
-}
-
-/// `nairobi` → `Nairobi`, `new york` → `New York`.
-fn title_case(text: &str) -> String {
-    text.split(' ')
-        .map(|w| {
-            let mut chars = w.chars();
-            chars
-                .next()
-                .map(|c| c.to_uppercase().collect::<String>() + chars.as_str())
-                .unwrap_or_default()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 /// How much a kind counts in a mode (§5).
