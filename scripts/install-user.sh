@@ -18,7 +18,6 @@ files=(
   "$data_dir/dbus-1/services/$app_id.service"
   "$unit_dir/$app_id.service"
   "$data_dir/icons/hicolor/512x512/apps/$app_id.png"
-  "$data_dir/sam/sounds/listening.wav"
 )
 
 # dbus-broker does not watch its service directories.
@@ -57,7 +56,6 @@ install -Dm644 data/icons/hicolor/index.theme "$data_dir/icons/hicolor/index.the
 rm -f "$data_dir/icons/hicolor/icon-theme.cache"
 gtk-update-icon-cache -f "$data_dir/icons/hicolor" >/dev/null
 # The listening cue (§16): what `pw-play` hears on session start.
-install -Dm644 data/sounds/listening.wav "$data_dir/sam/sounds/listening.wav"
 
 reload_bus
 # A running instance is the old binary; the unit restart below replaces it.

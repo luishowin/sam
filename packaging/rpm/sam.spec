@@ -79,8 +79,6 @@ install -Dm0644 data/icons/hicolor/512x512/apps/%{app_id}.png \
     %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{app_id}.png
 install -Dm0644 data/icons/hicolor/scalable/apps/%{app_id}.svg \
     %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
-install -Dm0644 data/sounds/listening.wav \
-    %{buildroot}%{_datadir}/sam/sounds/listening.wav
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 
 %files
@@ -93,7 +91,6 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_userunitdir}/%{app_id}.service
 %{_datadir}/icons/hicolor/512x512/apps/%{app_id}.png
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
-%{_datadir}/sam/sounds/listening.wav
 
 %changelog
 * Thu Nov 05 2026 Luis Howin Maina <howin329@gmail.com> - 0.1.0-1
