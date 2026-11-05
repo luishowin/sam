@@ -116,7 +116,19 @@ fn add_actions(app: &adw::Application, panel: &Rc<Panel>) {
                 })
                 .build()
         };
-        app.add_action_entries([snapshot, enter, heard]);
+        let listen_start = {
+            let panel = panel.clone();
+            gio::ActionEntry::builder("debug-listen-start")
+                .activate(move |_: &adw::Application, _, _| panel.debug_start_listen())
+                .build()
+        };
+        let listen_stop = {
+            let panel = panel.clone();
+            gio::ActionEntry::builder("debug-listen-stop")
+                .activate(move |_: &adw::Application, _, _| panel.debug_stop_listen())
+                .build()
+        };
+        app.add_action_entries([snapshot, enter, heard, listen_start, listen_stop]);
     }
 }
 

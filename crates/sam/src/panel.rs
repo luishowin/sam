@@ -18,7 +18,7 @@ use sam_core::trouble::Trouble;
 use sam_linux::config::Config;
 use sam_linux::executor::Executor;
 use sam_linux::log;
-use sam_voice::{Event as VoiceEvent, VoiceEngine};
+use sam_voice::{Event as VoiceEvent, VoiceConfig, VoiceEngine};
 
 use crate::row::Row;
 use crate::surface::{Shape, Surface};
@@ -64,6 +64,7 @@ pub struct Panel {
     file_source: RefCell<Option<glib::SourceId>>,
     voice: RefCell<Option<VoiceEngine>>,
     voice_mode: String,
+    voice_threads: usize,
     listening: Cell<bool>,
     from_voice: Cell<bool>,
     voice_cancelled: Cell<bool>,
@@ -172,7 +173,7 @@ impl Panel {
         let config = Config::load();
         let voice_mode = config.voice_mode().to_owned();
         let voice = if voice_mode == "eager" {
-            VoiceEngine::spawn_default().ok()
+            spawn_voice(config.voice.threads)
         } else {
             None
         };
@@ -198,6 +199,7 @@ impl Panel {
             file_source: RefCell::new(None),
             voice: RefCell::new(voice),
             voice_mode,
+            voice_threads: config.voice.threads,
             listening: Cell::new(false),
             from_voice: Cell::new(false),
             voice_cancelled: Cell::new(false),
@@ -658,6 +660,15 @@ impl Panel {
         self.activate_selected();
     }
 
+    /// Development only: the real push-to-talk path.
+    pub fn debug_start_listen(self: &Rc<Self>) {
+        self.start_listen();
+    }
+
+    pub fn debug_stop_listen(self: &Rc<Self>) {
+        self.stop_listen();
+    }
+
     /// Development only: what a final voice transcript does.
     pub fn debug_heard(self: &Rc<Self>, text: &str) {
         self.from_voice.set(true);
@@ -691,13 +702,13 @@ impl Panel {
             return;
         }
         if self.voice.borrow().is_none() {
-            match VoiceEngine::spawn_default() {
-                Ok(engine) => {
+            match spawn_voice(self.voice_threads) {
+                Some(engine) => {
                     *self.voice.borrow_mut() = Some(engine);
                     self.footer
                         .set_label("Loading the speech model — hold again when ready");
                 }
-                Err(e) => self.footer.set_label(&format!("Speech: {e}")),
+                None => self.footer.set_label("Speech: the worker could not start"),
             }
             return;
         }
@@ -822,6 +833,11 @@ impl Panel {
             .map(str::to_owned)
             .collect();
         let first = words.first().map(String::as_str).unwrap_or("");
+        if matches!(first, "find" | "search" | "locate" | "where") {
+            self.footer
+                .set_label("Heard · file results appear below, ↵ opens one");
+            return;
+        }
         let explicit_open = matches!(
             first,
             "open" | "launch" | "start" | "show" | "run" | "reveal"
@@ -859,6 +875,14 @@ impl Panel {
         let texture = renderer.render_texture(&node, Some(&viewport));
         let _ = texture.save_to_png(path);
     }
+}
+
+fn spawn_voice(threads: usize) -> Option<VoiceEngine> {
+    let mut config = VoiceConfig::default();
+    if threads > 0 {
+        config.threads = threads;
+    }
+    VoiceEngine::spawn(config).ok()
 }
 
 fn now_secs() -> u64 {
