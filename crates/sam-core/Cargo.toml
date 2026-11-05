@@ -1,6 +1,6 @@
 [package]
 name = "sam-core"
-description = "SAM's platform-free core: intents, the action registry, policy, parsing and ranking"
+description = "Sam's platform-free core: registry, parsing, ranking, policy and typed results"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -31,9 +31,17 @@ OS project record.
 
 ## Status at separation
 
-Sam had a specification and a boundary agreement, and no implementation. This repository is
-therefore documentation-led. No source code was moved from Ida into Sam, and no Ida
-functionality was removed.
+Sam had a specification and a boundary agreement, and no implementation. At separation no
+source code was moved from Ida into Sam.
+
+## Update, 2026-11-05
+
+Sam now has a Fedora prototype. Its panel shell, Fedora adapters and setup logic began from
+Ida's MIT-licensed code, were stripped of AI, network, voice, weather, shell and conversation
+paths, and were extended with Sam's registry, live system providers, documentation, timers
+and speech worker. On the development machine Ida has been removed and Sam installed in its
+place; see [`migration-from-ida.md`](migration-from-ida.md). The Ida repository remains a
+separate project.
 
 ## Related records
 

@@ -1,6 +1,6 @@
 [package]
 name = "sam"
-description = "SAM Core: find, launch, ask"
+description = "Sam: search execution engine panel and CLI"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

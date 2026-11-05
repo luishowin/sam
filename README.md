@@ -394,6 +394,21 @@ The intended implementation sequence is:
 
 These phases are planning intent, not commitments. See [ROADMAP.md](ROADMAP.md).
 
+## Building the prototype
+
+Fedora 45 with GTK 4.24, libadwaita 1.10, Rust >= 1.92 and the speech build
+dependencies:
+
+```sh
+sudo dnf install gtk4-devel libadwaita-devel alsa-lib-devel openssl-devel
+cargo test --workspace
+cargo build --release
+sam voice setup              # once: downloads the local speech model
+sam setup                    # Super+Space and the user service
+```
+
+The RPM path is in [`docs/fedora-prototype.md`](docs/fedora-prototype.md).
+
 ## Contributing
 
 Sam now has a running Fedora prototype. Useful contributions are registry coverage,

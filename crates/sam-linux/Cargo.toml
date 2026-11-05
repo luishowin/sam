@@ -1,6 +1,6 @@
 [package]
 name = "sam-linux"
-description = "SAM's Fedora/GNOME adapter: apps, files, launching, system actions"
+description = "Sam's Fedora/GNOME adapter: apps, files, live system state and fixed actions"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
