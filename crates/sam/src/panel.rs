@@ -174,6 +174,15 @@ impl Panel {
         keys.connect_key_pressed(move |_, key, _, _| p.key(key));
         panel.window.add_controller(keys);
 
+        let focus = gtk::EventControllerFocus::new();
+        let p = panel.clone();
+        focus.connect_leave(move |_| {
+            if !crate::trace::pinned() {
+                p.hide("focus");
+            }
+        });
+        panel.window.add_controller(focus);
+
         let p = panel.clone();
         panel.window.connect_close_request(move |_| {
             p.hide("close");

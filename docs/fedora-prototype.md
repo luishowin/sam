@@ -151,6 +151,9 @@ or unload it after a bounded idle period, at the cost of the first syllable.
   the next step.
 - Registry entries are still hand-authored. The build-time authoring pipeline
   from the specification is not implemented.
+- `ort` fetches its ONNX Runtime binary during the first build. The runtime is
+  then linked into the package and makes no network calls, but a fully offline
+  RPM builder needs that binary pinned in the vendor set.
 
 ## What this proves
 
