@@ -18,6 +18,7 @@ models/
 *.onnx
 *.bin
 *.safetensors
+*.cact
 
 # Local indexes, caches and databases
 *.sqlite

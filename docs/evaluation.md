@@ -156,12 +156,18 @@ Instrument each stage: normalise, Tier 0, Tier 1, Tier 2, Tier 3 TTFT, execute, 
 
 | Model | What to measure | Method |
 |---|---|---|
-| Needle | Tool exact match, argument exact match, `[]` recall, confidence calibration, latency | Golden set; reliability curve (confidence bin versus observed accuracy) |
+| Needle (base) | Tool exact match, argument exact match, `[]` recall, confidence calibration, latency | Golden set; reliability curve (confidence bin versus observed accuracy) |
+| Needle (tuned) | The same, plus base-versus-tuned on the held-out set | Exact-match comparison; a local tune reports `confidence = None`, so calibrate on the held-out set |
 | Local 1–4B | Knowledge rubric, TTFT cold/warm, tokens/s, peak RSS, tool-call accuracy on the same schema | A separate 200-question knowledge set graded correct / partial / hallucinated / refused |
 | Comparison | Tier 0 only, Tier 0 + Tier 1, Tier 0 + Tier 1 + Tier 3 | Same corpus, same machine, same run count |
 
+The validation split used by `cactus finetune --val-split` is not the frozen held-out set. The
+held-out file is used only for the final base-versus-tuned comparison, and never for training or
+model selection.
+
 The knowledge set is separate from the command golden set. Do not mix "can it answer trivia"
-with "can it route a timer."
+with "can it route a timer." The fine-tuning procedure is in
+[`fine-tuning-runbook.md`](fine-tuning-runbook.md).
 
 ## Decision gates
 

@@ -6,6 +6,9 @@ The teacher is a build-time dependency. It never ships, never answers a query an
 in the installed footprint. Its output is data, and data enters the project only after the same
 validation a human-written registry entry receives.
 
+The commands, environment and hardware paths are in
+[`fine-tuning-runbook.md`](fine-tuning-runbook.md).
+
 ---
 
 ## What is fine-tuned
@@ -86,6 +89,27 @@ Approximate shares for the first tuned artifact. Adjust only with a measured rea
 Every capability gets at least a few canonical and paraphrase examples. Rare or dangerous
 capabilities get more negatives than positives.
 
+## Data shape for Sam
+
+Needle 3 reads the whole declared toolset. It has no retrieval head, so Sam's candidate
+retrieval must pre-filter before the call. The training data has to match that shape:
+
+- `tools.json` holds the full catalogue;
+- each training row carries a realistic subset of **4–8 tools**: the correct one, a few
+  plausible confusions and one or two irrelevant entries;
+- the subset is produced by the same candidate retrieval used at inference, or by hand until it
+  exists;
+- every row is one JSON object with `query`, `tools`, `answers`, optional `reasoning` and
+  optional `system`;
+- negatives use `"answers": []`; missing arguments call a `clarify` pseudo-tool rather than
+  guessing.
+
+Do not train on the full catalogue and deploy on a subset. The model learns the distribution it
+is shown.
+
+Rows must fit the training context (`--max-len`, default 1024). Short descriptions are part of
+the model input, not decoration.
+
 ## Speech-to-text noise
 
 Typed text and voice text share the router, so the training set must look like the transcript,
@@ -140,13 +164,32 @@ milestone.
 
 ## Training and export
 
-- Base model: a pinned Needle generation and slice size.
-- Method: LoRA fine-tune, merged and exported as a single artifact.
-- Tooling: Cactus's local tooling; no training data leaves the machine unless the user chooses
-  to send it to a hosted teacher.
-- Reproducibility: a clean checkout plus the recorded dataset and config reproduces the
-  artifact.
+- Base model: a pinned Needle generation and slice size (Needle 3, 20 layers).
+- Method: LoRA rank 16 on the attention projections, base frozen, merged at export.
+- Local precision: 4-bit at export. The shipped base is 2-bit; the hosted platform path trains
+  and exports at 2-bit.
+- Package: `cactus-compute`. `[train]` for CPU, `[train,gpu]` for NVIDIA, `[train,metal]` for
+  Apple. Inference does not need the training extra.
+- Pipeline:
+  ```sh
+  pip install "cactus-compute[train]"
+  cactus finetune data.jsonl --epochs 20 --val-split 0.1 --seed 0 --out adapter.safetensors
+  cactus build --lora adapter.safetensors --layers 20 --out sam-needle.cact
+  ```
+- Slice: `cactus build --layers N` writes a smaller subnetwork from the same adapter. Compare
+  accuracy against size before choosing.
+- Confidence: local fine-tuning does **not** train the confidence head. The tuned archive reports
+  `confidence = None`. Calibrate a threshold on the held-out set, keep the base model for gating,
+  or use the hosted platform path if the calibrated score is required.
+- Versioning: the `.cact` format is tied to the engine version. Pin `cactus-compute` wherever
+  the artifact is trained, built and run; rebuild when the engine changes.
+- Reproducibility: a clean checkout plus the recorded dataset, seed, package version and config
+  reproduces the artifact.
 - Size budget: record the artifact size; it is part of the memory budget.
+- No training data leaves the machine unless the user chooses to send it to a hosted teacher.
+
+The exact commands, WSL2/3060 notes and troubleshooting table are in
+[`fine-tuning-runbook.md`](fine-tuning-runbook.md).
 
 ## Shipping rule
 

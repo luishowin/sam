@@ -91,7 +91,7 @@ contracts are in [`docs/model-tiers.md`](docs/model-tiers.md); the harness is in
 |---|---|---|
 | **M0 — Harness** | Golden set (~220 cases), `sam eval`, stage timings, tool-schema export. | Per-category accuracy and latency on a frozen set; a regression exits non-zero |
 | **M1 — Needle router** | Sidecar, candidate retrieval, confidence threshold, `[]` contract. | Beats Tier 0 on paraphrase and STT categories without regressing negatives |
-| **M2 — Fine-tune** | Schema-validated teacher data, local LoRA, artifact versioning. | Beats the base router on the frozen and real-use sets; safety unchanged |
+| **M2 — Fine-tune** | Schema-validated teacher data, `cactus finetune`/`cactus build`, local LoRA, artifact versioning. | Beats the base router on the frozen and real-use sets; safety unchanged; `confidence` handled |
 | **M3 — Local answer** | 1–4B sidecar, offline path, trust labels, hardware tier. | Warm TTFT under 1 s, honest refusal, no unvalidated call |
 | **M4 — Escalation** | Ambiguous-tail routing and the tested recipe corpus. | Recovers most router failures; free-form shell stays display-only |
 

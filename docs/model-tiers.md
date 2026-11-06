@@ -98,18 +98,21 @@ for tool calling:
 - text goes in, a JSON call comes out;
 - a byte-level grammar compiled from the schemas constrains every token;
 - `[]` is the refusal contract for a request no declared tool can serve;
-- a calibrated confidence score accompanies the call;
-- above five declared tools it embeds the schemas and puts the best five in context;
-- it can be fine-tuned locally and exported as a small artifact.
+- a calibrated confidence score accompanies the call on the base and platform-tuned models;
+- **no tool-retrieval head**: Needle 3 reads the whole declared toolset, so Sam must pre-filter
+  to 4–8 candidate schemas before the call;
+- it runs on the Cactus engine as a single `.cact` artifact and can be fine-tuned locally.
 
 Sam uses it as a **fallback router**, not a primary one:
 
-- **Candidate retrieval.** `Registry::candidates_for` or the exported schema index selects at
-  most five capabilities. Needle never sees the whole catalogue.
+- **Candidate retrieval.** `Registry::candidates_for` or the exported schema index selects 4–8
+  capabilities. Needle never sees the whole catalogue; it has no retrieval head of its own.
 - **Schema.** The call must match the exported JSON Schema. Unknown tools, extra arguments,
   missing required arguments and out-of-range values are rejected before they reach policy.
 - **Confidence.** Act at or above the configured threshold. Below it, clarify or escalate; never
-  execute. The failure mode must be escalation, not a wrong action.
+  execute. The failure mode must be escalation, not a wrong action. A locally tuned archive
+  reports `confidence = None`; in that case calibrate a threshold on the held-out set or keep
+  the base model for gating.
 - **Refusal.** `[]` means Sam says "I can't do that here" or hands off. It is not an error.
 
 The tier runs as a sidecar over a Unix socket. `sam-core` does not link the model, and the Sam
@@ -118,7 +121,8 @@ process still makes no network calls. The speech worker in
 
 Fine-tuning is what makes this tier worth its footprint: the base model knows tool calling, and
 the tuned artifact knows Fedora GNOME vocabulary, Sam's action names and the argument shapes.
-See [`fine-tuning.md`](fine-tuning.md).
+See [`fine-tuning.md`](fine-tuning.md) and the command-level
+[`fine-tuning-runbook.md`](fine-tuning-runbook.md).
 
 ## Tier 2 — clarification and confirmation
 

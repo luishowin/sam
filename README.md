@@ -435,7 +435,8 @@ the action **and** its arguments match.
 
 `sam eval` runs the set, prints accuracy by category and latency p50/p95, and exits non-zero on
 regression. The corpus is never used for training. See
-[docs/evaluation.md](docs/evaluation.md) and [docs/fine-tuning.md](docs/fine-tuning.md).
+[docs/evaluation.md](docs/evaluation.md), [docs/fine-tuning.md](docs/fine-tuning.md) and the
+[docs/fine-tuning-runbook.md](docs/fine-tuning-runbook.md).
 
 ## Interface with Ida and Essential OS
 
@@ -615,6 +616,7 @@ MIT-licensed projects.
 - Investigation: [docs/investigation.md](docs/investigation.md)
 - Evaluation: [docs/evaluation.md](docs/evaluation.md)
 - Fine-tuning: [docs/fine-tuning.md](docs/fine-tuning.md)
+- Fine-tuning runbook: [docs/fine-tuning-runbook.md](docs/fine-tuning-runbook.md)
 - Offline and web handoff: [docs/offline-and-web.md](docs/offline-and-web.md)
 - Fedora prototype: [docs/fedora-prototype.md](docs/fedora-prototype.md)
 - Migration from Ida: [docs/migration-from-ida.md](docs/migration-from-ida.md)
