@@ -44,7 +44,8 @@ speech rows differ because they were taken in different modes and on different b
 them as a range and re-measure before publishing a gate. On a 4 GB machine the next step is
 lazy load or idle unload, measured rather than assumed.
 
-Model tiers are not measured yet. Their provisional budgets are in the next section.
+Model tiers are only partly measured. The first Needle numbers are in the targets section; the
+Tier 3 budgets are still provisional.
 
 ## Targets
 
@@ -65,6 +66,12 @@ Model tiers are not measured yet. Their provisional budgets are in the next sect
 | Tier 3 resident, 1.7B q4 | 1.1–1.3 GB | Sidecar, warm |
 | Tier 3 resident, 4B q4 | 2.3–2.6 GB | Sidecar, warm |
 | Idle CPU | Near zero | No continuous inference or polling |
+
+The first local tune measured a warm 40-call median of 227 ms for the base and 267 ms for the
+20-layer tuned artifact on the development laptop, with a four-tool subset. That is below the
+250 ms target only in the base case; the tuned number is a median, not a p95, and not a sidecar
+measurement. The 20-layer 4-bit archive is 63.4 MB and the base 2-bit archive is 35.3 MB, both
+inside the 30–120 MB Tier 1 allowance.
 
 ## Suggested memory allocation
 

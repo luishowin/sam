@@ -157,13 +157,31 @@ Instrument each stage: normalise, Tier 0, Tier 1, Tier 2, Tier 3 TTFT, execute, 
 | Model | What to measure | Method |
 |---|---|---|
 | Needle (base) | Tool exact match, argument exact match, `[]` recall, confidence calibration, latency | Golden set; reliability curve (confidence bin versus observed accuracy) |
-| Needle (tuned) | The same, plus base-versus-tuned on the held-out set | Exact-match comparison; a local tune reports `confidence = None`, so calibrate on the held-out set |
+| Needle (tuned) | The same, plus base-versus-tuned on the held-out set; argument match raw and normalised | `scripts/evaluate-needle.py`; a local tune reports `confidence = None`, so calibrate on the validation split |
 | Local 1–4B | Knowledge rubric, TTFT cold/warm, tokens/s, peak RSS, tool-call accuracy on the same schema | A separate 200-question knowledge set graded correct / partial / hallucinated / refused |
 | Comparison | Tier 0 only, Tier 0 + Tier 1, Tier 0 + Tier 1 + Tier 3 | Same corpus, same machine, same run count |
 
 The validation split used by `cactus finetune --val-split` is not the frozen held-out set. The
 held-out file is used only for the final base-versus-tuned comparison, and never for training or
-model selection.
+model selection. That rule also covers choosing the epoch, rank or layer slice.
+
+Argument normalisation is a secondary metric, not a replacement for raw exact match. The harness
+normalises case, whitespace, durations, clock times and numbers; it never rewrites the tool name
+or a path extension. Both numbers are reported.
+
+### First measured comparison
+
+On the 40-row frozen holdout, with the system date pinned
+(`date: 2026-11-06 Fri 09:00; locale: en-GB`):
+
+| Model | Name | Args raw | Args normalised | `[]` | False pos |
+|---|---:|---:|---:|---:|---:|
+| base Needle 3 | 23/32 | 20/32 | 22/32 | 7/8 | 1 |
+| tuned, 20 layers | 26/32 | 24/32 | 26/32 | 8/8 | 0 |
+| tuned, 8 layers | 14/32 | 10/32 | 11/32 | 4/8 | 4 |
+
+The 20-layer tune clears the frozen-set half of G2. The real-use set and the safety suite are
+still open. The date fact changes time-sensitive rows by about ±1, so the evaluator pins it.
 
 The knowledge set is separate from the command golden set. Do not mix "can it answer trivia"
 with "can it route a timer." The fine-tuning procedure is in

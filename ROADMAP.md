@@ -95,6 +95,10 @@ contracts are in [`docs/model-tiers.md`](docs/model-tiers.md); the harness is in
 | **M3 — Local answer** | 1–4B sidecar, offline path, trust labels, hardware tier. | Warm TTFT under 1 s, honest refusal, no unvalidated call |
 | **M4 — Escalation** | Ambiguous-tail routing and the tested recipe corpus. | Recovers most router failures; free-form shell stays display-only |
 
+M2 is partially met: the 20-layer tune beat the base on the frozen set (26/32 names, 24/32 raw
+arguments, negatives 8/8); the real-use and safety gates, and a sidecar p95 measurement, are still
+open. See [`docs/fine-tuning-runbook.md`](docs/fine-tuning-runbook.md#first-run-record-2026-11-07).
+
 A phase that fails its gate is dropped, not carried forward.
 
 ## W0–W1 — Window control

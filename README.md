@@ -509,13 +509,19 @@ This machine now runs Sam instead of Ida. The migration is recorded in
 [docs/migration-from-ida.md](docs/migration-from-ida.md). Ida's repository remains a
 separate project.
 
+The first Needle 3 fine-tune is complete. On the frozen 40-row holdout it moved tool names from
+23/32 to 26/32 and raw arguments from 20/32 to 24/32 (26/32 normalised), with negatives improving
+from 7/8 to 8/8 and no false positives. It is a candidate, not shipped: the real-use, safety and
+p95-latency gates are still open. See
+[docs/fine-tuning-runbook.md](docs/fine-tuning-runbook.md#first-run-record-2026-11-07).
+
 What does **not** exist yet:
 
 - the final Essential OS shell integration;
 - the build-time registry authoring pipeline and frozen evaluation corpus;
 - semantic embeddings and a query encoder;
-- the model tiers: tool-schema export, router seam, Needle sidecar, fine-tune and offline
-  answer model;
+- the model tiers: tool-schema export, router seam, Needle sidecar and offline answer model
+  (the Needle fine-tune itself is measured but not yet integrated);
 - window control: the GNOME Shell extension, D-Bus client and `window.*` actions;
 - investigation: the probe registry, probe executor, content search and the bounded Tier 3
   loop;
@@ -551,6 +557,10 @@ The model work has its own track, described in [docs/model-tiers.md](docs/model-
 | **M2 — Fine-tune** | Schema-validated teacher data, local LoRA, artifact versioning. | Beats the base router on the frozen and real-use sets; safety unchanged |
 | **M3 — Local answer** | 1–4B sidecar, offline path, trust labels, hardware tier. | Warm TTFT under 1 s, honest refusal, no unvalidated call |
 | **M4 — Escalation** | Ambiguous-tail routing and recipe corpus. | Recovers most router failures; free-form shell stays display-only |
+
+M2's frozen-set gate is met by the 20-layer tune; the real-use and safety gates are still open,
+so the artifact is not shipped. See
+[docs/fine-tuning-runbook.md](docs/fine-tuning-runbook.md#first-run-record-2026-11-07).
 
 Two deterministic tracks can ship before the model work:
 

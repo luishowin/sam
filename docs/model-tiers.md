@@ -91,9 +91,9 @@ The grammar is not a fallback for the model. The model is a fallback for the gra
 
 ## Tier 1 — Needle router
 
-Needle is a small encoder-decoder "Simple Attention Network" from Cactus. The current
-generation is a single 8–29 MB artifact (29–121M parameters depending on the slice). It is built
-for tool calling:
+Needle is a small encoder-decoder "Simple Attention Network" from Cactus. The base artifact is
+35.3 MB at 2 bits; a local 4-bit tune is 63.4 MB, and its 8-layer slice is 27.4 MB. Parameter
+counts depend on the slice (29–121M). It is built for tool calling:
 
 - text goes in, a JSON call comes out;
 - a byte-level grammar compiled from the schemas constrains every token;
@@ -121,6 +121,10 @@ process still makes no network calls. The speech worker in
 
 Fine-tuning is what makes this tier worth its footprint: the base model knows tool calling, and
 the tuned artifact knows Fedora GNOME vocabulary, Sam's action names and the argument shapes.
+A first local tune on 360 rows moved the frozen holdout from 23/32 to 26/32 tool names and from
+20/32 to 24/32 raw arguments (26/32 after normalisation), with negatives improving from 7/8 to
+8/8 and no false positives. The 8-layer slice was not viable. The tuned artifact is a candidate
+pending the real-use and safety gates; it reports `confidence = None`.
 See [`fine-tuning.md`](fine-tuning.md) and the command-level
 [`fine-tuning-runbook.md`](fine-tuning-runbook.md).
 

@@ -1,6 +1,6 @@
 # Fine-tuning
 
-**Status:** Design · **Scope:** How Sam builds, validates and ships model training data
+**Status:** Design; first tune measured (2026-11-07) · **Scope:** How Sam builds, validates and ships model training data
 
 The teacher is a build-time dependency. It never ships, never answers a query and never appears
 in the installed footprint. Its output is data, and data enters the project only after the same
@@ -161,13 +161,18 @@ milestone.
 - Generated examples that resemble a holdout query too closely are removed.
 - The dataset hash, seed, teacher version and base-model version are recorded with the artifact.
 - A tuned artifact is evaluated on the holdout, the real-use set and the safety suite.
+- The holdout is never used for model selection. Choose the epoch, rank and slice on the
+  validation split; touch the frozen set once, for the final comparison.
+- Argument exact match is recorded raw and after normalisation. Normalisation covers case,
+  whitespace, durations, clock times and numbers; it never rewrites the tool name or a path
+  extension. Raw match remains the primary metric.
 
 ## Training and export
 
 - Base model: a pinned Needle generation and slice size (Needle 3, 20 layers).
 - Method: LoRA rank 16 on the attention projections, base frozen, merged at export.
-- Local precision: 4-bit at export. The shipped base is 2-bit; the hosted platform path trains
-  and exports at 2-bit.
+- Local precision: 4-bit at export, which made the first 20-layer archive 63.4 MB; the shipped base
+  is 2-bit at 35.3 MB. The hosted platform path trains and exports at 2-bit.
 - Package: `cactus-compute`. `[train]` for CPU, `[train,gpu]` for NVIDIA, `[train,metal]` for
   Apple. Inference does not need the training extra.
 - Pipeline:
@@ -176,11 +181,13 @@ milestone.
   cactus finetune data.jsonl --epochs 20 --val-split 0.1 --seed 0 --out adapter.safetensors
   cactus build --lora adapter.safetensors --layers 20 --out sam-needle.cact
   ```
-- Slice: `cactus build --layers N` writes a smaller subnetwork from the same adapter. Compare
-  accuracy against size before choosing.
+- Slice: `cactus build --layers N` writes a smaller subnetwork from the same adapter. The first
+  run's 8-layer slice was 27.4 MB but fell from 26/32 to 14/32 on the frozen holdout; 20 layers is
+  the current choice. Intermediate 12/16/18 slices remain untested.
 - Confidence: local fine-tuning does **not** train the confidence head. The tuned archive reports
-  `confidence = None`. Calibrate a threshold on the held-out set, keep the base model for gating,
-  or use the hosted platform path if the calibrated score is required.
+  `confidence = None`. Calibrate a threshold on the validation split (never the frozen holdout),
+  keep the base model for gating, or use the hosted platform path if the calibrated score is
+  required.
 - Versioning: the `.cact` format is tied to the engine version. Pin `cactus-compute` wherever
   the artifact is trained, built and run; rebuild when the engine changes.
 - Reproducibility: a clean checkout plus the recorded dataset, seed, package version and config
@@ -188,7 +195,23 @@ milestone.
 - Size budget: record the artifact size; it is part of the memory budget.
 - No training data leaves the machine unless the user chooses to send it to a hosted teacher.
 
-The exact commands, WSL2/3060 notes and troubleshooting table are in
+### Measured result
+
+The first completed tune is recorded in
+[`fine-tuning-runbook.md`](fine-tuning-runbook.md#first-run-record-2026-11-07). On the frozen
+40-row holdout, with the system date fixed:
+
+| Model | Name | Args raw | Args normalised | `[]` | False pos |
+|---|---:|---:|---:|---:|---:|
+| base Needle 3 | 23/32 | 20/32 | 22/32 | 7/8 | 1 |
+| tuned, 20 layers | 26/32 | 24/32 | 26/32 | 8/8 | 0 |
+| tuned, 8 layers | 14/32 | 10/32 | 11/32 | 4/8 | 4 |
+
+The 20-layer tune is a candidate, not a shipped artifact: the real-use set, the safety suite and
+a sidecar p95 latency measurement are still outstanding. Local tuning also leaves
+`confidence = None`.
+
+The exact commands, small-GPU notes and troubleshooting table are in
 [`fine-tuning-runbook.md`](fine-tuning-runbook.md).
 
 ## Shipping rule
@@ -214,7 +237,10 @@ point of the holdout.
 
 ## Open questions
 
-- Which Needle generation and slice gives the best accuracy per megabyte on this CPU?
+- Which slice gives the best accuracy per megabyte? The 8-layer export collapsed on the first
+  holdout (14/32); 12, 16 and 18 layers are untested.
+- Is a 2-bit export viable for the local tune, and what does it cost in accuracy?
+- Does LoRA rank 32 close the remaining argument-grounding gap (24/32 raw, 26/32 normalised)?
 - Is a tuned Needle enough, or does the ambiguous tail need Tier 3?
 - How much STT-noise data is needed before the router stops blaming transcription?
 - Does a 1–4B teacher-generated answer set improve Tier 3, or does it teach confident guessing?
