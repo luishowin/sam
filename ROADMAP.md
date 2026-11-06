@@ -1,20 +1,22 @@
 # Roadmap
 
-**Status:** Fedora prototype built; Essential OS work remains · **Last updated:** 2026-11-05
+**Status:** Fedora prototype built; model tiers designed; Essential OS work remains · **Last updated:** 2026-11-06
 
 Sam has a working Fedora prototype. This roadmap still describes the intended implementation
 order toward Essential OS. Each phase ends at a measured gate, and a safe stop at any gate
 should leave something usable. See [docs/fedora-prototype.md](docs/fedora-prototype.md) for
-what is actually built.
+what is actually built and [docs/model-tiers.md](docs/model-tiers.md) for the model track.
 
 ---
 
 ## Guiding constraints
 
-- No generative model in the runtime.
+- Models propose; the runtime decides. A local model may supply one inert call; the registry
+  validates it, policy approves it and a fixed handler runs it.
+- No free-text generation in the routing or execution path.
 - No conversational memory or personal profiling.
-- No network egress from the Sam process.
-- Useful on a 4 GB system.
+- No network egress from the Sam process. Local model sidecars use a Unix socket.
+- Useful on a 4 GB system with Tier 0 and Tier 1; the local answer tier needs 8 GB or more.
 - A new capability is a registry entry, a handler and tests.
 - Claims are measured before they are published.
 
@@ -63,9 +65,9 @@ precision meets the initial target.
 **Exit gate:** registry is versioned, reviewable and reproducible; untested entries cannot
 ship.
 
-## S3 — Semantic retrieval
+## S3 — Semantic and model retrieval
 
-**Status:** Deferred. Lexical, synonym and fuzzy retrieval only.
+**Status:** Deferred. Lexical, synonym and fuzzy retrieval only; the model tiers are design.
 
 **Work**
 
@@ -73,9 +75,47 @@ ship.
 - Compact query encoder loaded on demand.
 - Hybrid lexical and semantic ranking.
 - Lexical-only fallback.
+- A small Needle router for the tail, fed by candidate retrieval and the exported schemas.
 
-**Exit gate:** paraphrase recall improves enough to justify latency and RAM; lexical-only mode
-remains usable.
+**Exit gate:** paraphrase recall improves enough to justify latency and RAM; the router beats
+the grammar alone on the frozen set without regressing negatives; lexical-only mode remains
+usable.
+
+## M0–M4 — Model track
+
+The model work is tracked separately because it is optional and gated on measurement. The full
+contracts are in [`docs/model-tiers.md`](docs/model-tiers.md); the harness is in
+[`docs/evaluation.md`](docs/evaluation.md).
+
+| Phase | Work | Exit gate |
+|---|---|---|
+| **M0 — Harness** | Golden set (~220 cases), `sam eval`, stage timings, tool-schema export. | Per-category accuracy and latency on a frozen set; a regression exits non-zero |
+| **M1 — Needle router** | Sidecar, candidate retrieval, confidence threshold, `[]` contract. | Beats Tier 0 on paraphrase and STT categories without regressing negatives |
+| **M2 — Fine-tune** | Schema-validated teacher data, local LoRA, artifact versioning. | Beats the base router on the frozen and real-use sets; safety unchanged |
+| **M3 — Local answer** | 1–4B sidecar, offline path, trust labels, hardware tier. | Warm TTFT under 1 s, honest refusal, no unvalidated call |
+| **M4 — Escalation** | Ambiguous-tail routing and the tested recipe corpus. | Recovers most router failures; free-form shell stays display-only |
+
+A phase that fails its gate is dropped, not carried forward.
+
+## W0–W1 — Window control
+
+| Phase | Work | Exit gate |
+|---|---|---|
+| **W0 — Spike** | Minimal GNOME Shell extension, one D-Bus method, call it from Rust. | Works on the development machine; version and fragility recorded |
+| **W1 — Actions** | Registry entries, resolver, geometry, fake backend, `sam setup` install/undo. | Minimise, maximise, move, centre and close-with-confirmation pass the live check |
+
+Window control is deterministic and does not wait for a model.
+
+## I0–I3 — Investigation
+
+| Phase | Work | Exit gate |
+|---|---|---|
+| **I0 — Probe registry** | Fixed argv, read-only validation, executable and path allowlists, timeout, output cap, redaction. | Adversarial probes are refused; no mutation is reachable |
+| **I1 — Templates** | Deterministic answers for uptime, boot history, battery and failed services; copy button. | Answers are grounded in output; no invented causes |
+| **I2 — Content search** | LocalSearch first, bounded `rg`/`grep` fallback, ranked paths, open/reveal. | Known document found; denied roots untouched |
+| **I3 — Tier 3 investigation** | Bounded three-probe loop, summary, trust label, fine-tune data. | Correct probe selection; no raw command; safety unchanged |
+
+I3 depends on M0. I0–I2 do not.
 
 ## S4 — Sources and handlers
 
@@ -124,11 +164,15 @@ gate are pending.
 
 **Work**
 
-- Test on 4 GB systems, offline, under index load and with encoder cold start.
+- Test on 4 GB systems with Tier 0 and Tier 1, offline, under index load and with encoder cold
+  start.
+- Test Tier 3 on an 8 GB or larger machine, including cold and warm TTFT and idle unload.
 - Failure injection and long-running cache churn.
-- Package and version the registry, handlers and index schema together.
+- Package and version the registry, handlers, tool schemas, model artifacts and index schema
+  together.
 
-**Exit gate:** memory, latency, accuracy, offline, privacy and no-memory acceptance gates pass.
+**Exit gate:** memory, latency, accuracy, offline, privacy and no-memory acceptance gates pass
+on the hardware tier each tier claims to support.
 
 ## Open decisions
 
@@ -140,15 +184,26 @@ These must be settled before or during implementation:
 4. **Which result actions Sam may offer directly.**
 5. **Default-enabled domains and opt-in domains.**
 6. **Whether a dedicated embedding encoder is worth its cost.**
-7. **Minimum reference hardware and measured baselines.**
+7. **Minimum reference hardware and measured baselines, including the Tier 3 hardware tier.**
 8. **Registry authoring tooling and review workflow.**
 9. **Whether any domain needs full-content indexing.**
+10. **Which Needle generation and slice size; q4 versus q5.**
+11. **The Tier 1 confidence threshold and the escalation rule.**
+12. **Whether Tier 3 may propose calls or only answer questions.**
+13. **Transcript logging for real-use review (default remains metadata-only).**
+14. **Window extension packaging and the supported GNOME version range.**
+15. **The probe allowlist and the default content-search roots.**
+16. **Whether `window.close` needs a typed confirmation or a single yes.**
 
 ## Out of scope
 
 - Becoming an agent framework.
 - Replacing Ida's action policy or Hermes.
-- General knowledge, web research or creative writing.
+- General knowledge, web research or creative writing inside Sam.
 - Conversational memory or personalisation.
 - A plugin marketplace.
 - Multi-user or multi-device behaviour in v1.
+- A cloud tier inside Sam; escalation belongs to the caller.
+- Model-written shell commands, including in the recipe tier.
+- Screenshots, input injection or arbitrary window control.
+- Free-form shell investigation; only fixed read-only probes.

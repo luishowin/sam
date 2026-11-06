@@ -43,6 +43,25 @@ The caller owns confirmation. Sam may propose `clock.timer_start`; the Clock
 app performs it. Until then, `timer.set` remains a Sam-owned action and is
 documented as such.
 
+## Window management
+
+GNOME Wayland has **no window-management API for external clients**.
+
+- `wmctrl` and `xdotool` only reach XWayland windows.
+- `org.gnome.Shell.Eval` has been disabled since GNOME 41.
+- Wayland prevents one client from manipulating another client's surfaces.
+- The only process with the authority is `gnome-shell` itself.
+
+Sam therefore ships a minimal GNOME Shell extension exposing a narrow D-Bus interface for list,
+activate, minimise, maximise, restore, move-resize, work area and close. There is no eval, no
+shell and no input injection. It is installed and enabled by `sam setup`, and removed by
+`sam setup --undo`.
+
+The extension is version-sensitive. Record the Shell version it was tested on and treat a new
+major version as unverified until it is checked. If the extension is missing or disabled,
+window actions report `source_unavailable`; they never fall back to an X11 tool or a shell
+command. See [`window-control.md`](window-control.md).
+
 ## Other gaps
 
 - No standard way to ask the shell to show a persistent countdown.

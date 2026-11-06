@@ -9,6 +9,10 @@ Add local, offline, English-only speech-to-text to the launcher's search bar. Th
 3. **Measure, don't guess.** Log timings at each stage (see "Instrumentation") and report real numbers.
 4. **Everything runs locally.** No network calls at runtime. Model files are downloaded once at setup.
 
+The transcript this pipeline produces enters the same tiered router as typed text: Tier 0
+first, then an optional local router on a miss. This guide covers capture, endpointing and
+transcription only; the tier contracts are in [`../model-tiers.md`](../model-tiers.md).
+
 ## Target environment
 
 - OS: Fedora Linux, PipeWire audio.

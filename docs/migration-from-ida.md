@@ -31,6 +31,10 @@ from it. The Sam and Ida projects remain separate.
   `/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/ida/`
 - any Ida keyring entry, Ollama action model or whisper artefact found
 
+The Ollama/FunctionGemma model that Ida used was removed with Ida. Sam's later model tiers are
+not a return to it: they are small, local, schema-constrained sidecars whose output is validated
+like any other proposal. See [`model-tiers.md`](model-tiers.md).
+
 The `Super+Space` key was restored first with `ida setup --undo`, so Ida's
 custom shortcut and unit were removed in the order Ida itself expects.
 

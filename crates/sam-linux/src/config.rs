@@ -36,7 +36,7 @@ impl Default for Projects {
     }
 }
 
-/// Local speech input. English only, offline, no model in the search path.
+/// Local speech input. English only, offline, no model in the fast path.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Voice {

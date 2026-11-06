@@ -13,7 +13,7 @@ pub enum Source {
     Grammar,
     /// A search provider built it for one of its results.
     Provider,
-    /// A local action model proposed it (0.0.6-C: Ollama + FunctionGemma).
+    /// A local action model proposed it (Needle, once the model tiers land).
     /// Still inert: validation and policy decide whether it may run.
     Model,
 }

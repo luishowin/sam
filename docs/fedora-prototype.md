@@ -26,6 +26,11 @@ window keeps a fixed transparent frame around the visible surfaces, a press
 outside the pill, results card or timer card dismisses the panel. The launcher
 icon uses the standard GNOME rounded-corner mask.
 
+**Model tiers are not in this build.** The architecture now allows a small local router
+(Needle) and an offline answer model, but neither is implemented or shipped. Everything below
+runs on the deterministic path. See [`model-tiers.md`](model-tiers.md) for the design and
+[`evaluation.md`](evaluation.md) for how they will be measured.
+
 ## Search domains
 
 | Domain | Source | Examples |
@@ -96,6 +101,29 @@ The guide is preserved at [`design/SPEECH_GUIDE.md`](design/SPEECH_GUIDE.md).
 
 The model is an input method. It never answers a query, and no audio or text
 leaves the machine.
+
+On the current path a transcript runs one safe result immediately, as described
+above. When the model tiers land, the transcript enters the same router as typed
+text: Tier 0 first, then an optional Needle fallback. The speech worker's job
+does not change.
+
+## Model tiers (design)
+
+The revised architecture, recorded in [`model-tiers.md`](model-tiers.md), adds two optional
+sidecars:
+
+- **Tier 1, Needle** — a small tool-calling model that proposes one JSON call from at most five
+  schemas when the grammar misses. `[]` means "no tool applies."
+- **Tier 3, local answer** — a 1–4B model for offline general questions, the ambiguous tail and
+  up to three fixed read-only probes, labelled "local model, unverified."
+
+Neither is built. The planned order is: golden set and `sam eval`, tool-schema export, a router
+seam, a Needle spike, then fine-tuning and the local-answer comparison. The phase gates are in
+[`evaluation.md`](evaluation.md).
+
+Window control and read-only investigation are separate deterministic capabilities; they do not
+need a model. See [`window-control.md`](window-control.md) and
+[`investigation.md`](investigation.md). Neither exists in this build either.
 
 ## CLI
 
@@ -169,8 +197,11 @@ and must be re-measured on the minimum reference machine.
 | Live system answer | 3–30 ms |
 | Idle service RSS, speech model warm | ~295 MB |
 | Idle service RSS, without speech | ~15 MB |
+| Service RSS, voice eager | ~248 MB PSS / 276 MB RSS |
+| Service RSS, voice lazy or off | ~46 MB RSS |
 | Network egress | none in the Sam process |
-| Generative model | none in the runtime |
+| Generative model | none in this build |
+| Tier 1 / Tier 3 | not implemented, not measured |
 
 The `sam bench` command prints current medians for a fixed phrase set.
 
@@ -220,6 +251,18 @@ resident memory, is the battery-relevant number; it is near zero after warm-up.
   checks and a formal schema are still to come.
 - Registry entries are still hand-authored. The build-time authoring pipeline
   from the specification is not implemented.
+- The model tiers are design only. There is no tool-schema export, router seam,
+  Needle sidecar or offline answer model in this build.
+- Window control and read-only probes are design only. There is no GNOME Shell extension,
+  window backend or probe executor in this build.
+- The window extension is version-sensitive and may need a logout/login after installation on
+  Wayland; see [`gnome-limitations.md`](gnome-limitations.md).
+- A 1–4B answer model does not fit comfortably on a 4 GB machine alongside GNOME.
+  The hardware tier and the lazy-load policy are unresolved; see
+  [`performance-targets.md`](performance-targets.md).
+- The evaluation corpus is 25 canonical cases and checks the action only, not
+  the arguments, paraphrases, negatives or latency. See
+  [`evaluation.md`](evaluation.md).
 - `ort` fetches its ONNX Runtime binary during the first build. The runtime is
   then linked into the package and makes no network calls, but a fully offline
   RPM builder needs that binary pinned in the vendor set.
@@ -230,3 +273,5 @@ resident memory, is the battery-relevant number; it is near zero after warm-up.
 - Live system answers and quick actions fit the same registry and policy path.
 - Voice can be an input method without becoming a reasoning system.
 - Sam works with no network and no conversational memory.
+- A local model can stay optional: the fast path is complete without it, and a
+  model can only add candidates, never authority.

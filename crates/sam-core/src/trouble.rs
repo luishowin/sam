@@ -12,8 +12,8 @@ pub enum Service {
     Fireworks,
     /// Weather and place names (F28).
     OpenMeteo,
-    /// The local action model over loopback (F37). No key, no account:
-    /// failures here are the daemon or the model, never credentials.
+    /// Legacy Ida action-model slot. Sam's model tiers use a local sidecar on a
+    /// Unix socket, not Ollama; this variant remains only for older log codes.
     Ollama,
     /// The speech model download (`sam voice setup`, F34): huggingface.co
     /// and the CDN host it redirects to, and nothing else there.

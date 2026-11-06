@@ -1,5 +1,10 @@
 # SAM Core's grammar (ARCHITECTURE.md §6).
 #
+# This grammar is Tier 0: the fast path. It must resolve common requests with
+# every model removed. A local router (Tier 1) may cover phrasing this file
+# misses, but it proposes one call into the same registry; it never executes.
+# See docs/model-tiers.md.
+#
 # Input is normalised before it gets here: lowercased, contractions expanded,
 # possessive 's dropped, filler words removed (please, can, you, me, my, the,
 # a, an, …), a leading "to" and a trailing "now" dropped. So patterns never

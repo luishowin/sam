@@ -93,6 +93,59 @@ The handler is fixed and reviewed. It reads the approved process source, applies
 limit and returns structured metrics. It does not execute the query text or generate its own
 explanation.
 
+## Model-facing artifacts
+
+The registry is also the source of truth for the model tiers. The same entry produces two
+artifacts:
+
+| Artifact | Consumer | Contents |
+|---|---|---|
+| Runtime catalogue | `sam-core` | Grammar, providers, params, validation and policy |
+| Exported tool schema | Tier 1 router, fine-tuning teacher, golden-set generator | Name, description, JSON Schema parameters, risk tier, confirmation rule |
+
+Rules:
+
+- The exporter reads `ActionSpec`, not a hand-maintained second list.
+- The schema uses typed parameters with bounds, enums and required flags, matching
+  `Registry::validate` exactly.
+- A fingerprint over the schemas is recorded with every model and every evaluation run.
+- A schema change invalidates cached tool embeddings and requires a new model artifact.
+- Registry, handlers, schemas and model artifact are released as one compatible bundle.
+- Descriptions are written for a reader with no world knowledge; they say what the capability
+  does and what it does not do.
+
+The contracts are in [`model-tiers.md`](model-tiers.md).
+
+## Probes and window actions
+
+Two capability families have their own validation rules.
+
+**Probes** are read-only investigation entries. Each declares:
+
+| Field | Rule |
+|---|---|
+| `program` | Absolute path from the executable allowlist; never a shell |
+| `args` | Fixed vector; slots only where declared |
+| `read_only` | Must be true; the registry refuses a probe that is not |
+| `timeout_ms` | Bounded, default 3000 |
+| `max_output` | Bounded, default 64 KiB |
+| `roots` | Optional path allowlist for file-reading probes |
+| `template` | Deterministic answer where one is possible |
+
+A probe is not a recipe for a mutation. Any program that can write, install, delete, move or
+reach the network is rejected at validation time, not at run time. The executor rules are in
+[`investigation.md`](investigation.md).
+
+**Window actions** are `LowRisk` or `Destructive` entries backed by the GNOME Shell extension:
+
+- `window.list` is `Read`;
+- minimise, maximise, restore, centre, move, activate and show-desktop are `LowRisk` with
+  `Confirmation::Never`;
+- `window.close` is `Destructive` with `Confirmation::Always`.
+
+The target is a string resolved against app id, WM_CLASS and window title. A target that matches
+several windows must clarify. The contract is in [`window-control.md`](window-control.md).
+
 ## Domains
 
 Initial domains and their source classes:
@@ -112,15 +165,16 @@ Initial domains and their source classes:
 ## Authoring pipeline
 
 A highly capable model may be used **at build time** to draft domain taxonomies, canonical
-intents, paraphrases, synonyms, slot definitions, response templates, test cases and candidate
-handler mappings. That model is a development dependency:
+intents, paraphrases, synonyms, slot definitions, response templates, test cases, candidate
+handler mappings and training data for the model tiers. That model is a development dependency:
 
 - it is not shipped with Sam;
 - it is not called to answer user queries;
 - it is not part of the installed memory footprint.
 
 Every generated entry must be reviewed, validated against a real local source, tested and
-versioned before release.
+versioned before release. Generated training examples are additionally validated against the
+exported schema, as described in [`fine-tuning.md`](fine-tuning.md).
 
 ## Validation
 
@@ -134,7 +188,14 @@ A registry entry is valid only when:
 6. its response schema is registered;
 7. its fallback and cache policies are explicit;
 8. its evaluation cases include at least one negative and one out-of-domain case;
-9. a nearest-neighbour check shows no unresolved confusion with a related intent.
+9. a nearest-neighbour check shows no unresolved confusion with a related intent;
+10. a probe is read-only, uses an allowlisted program and fixed argv, and declares a timeout
+    and output cap;
+11. a window action uses the fixed D-Bus contract and declares its risk and confirmation.
+
+The evaluation corpus is separate from the entry and is defined in
+[`evaluation.md`](evaluation.md). A capability is not shipped until the corpus has canonical,
+paraphrase and negative cases for it.
 
 ## Growth rule
 
@@ -145,8 +206,10 @@ performs well. Prefer fewer precise intents over a large, noisy registry.
 ## Versioning
 
 - Registry entries carry their own schema version.
-- The compiled registry, handler bundle, embedding model version and index schema are released
-  together.
+- The compiled registry, handler bundle, exported tool schemas, embedding model version, model
+  artifact and index schema are released together.
 - A registry update must not silently change Ida's action behaviour.
 - Migrations must be reversible or rebuildable from approved local sources.
 - Installed bundles are hash-checked at startup; nothing is downloaded or replaced silently.
+- A schema fingerprint mismatch disables the model tier rather than running it against a
+  changed registry.

@@ -1,8 +1,9 @@
 //! Sam's panel: a search pill, a results card, and honest execution.
 //!
-//! There is no model in this path. Text is matched against the registry and
+//! There is no model in the fast path. Text is matched against the registry and
 //! live local data; Enter validates one inert intent and the executor carries
-//! it out. The microphone is an input method only.
+//! it out. A model may later supply a candidate call, but it travels the same
+//! validation and policy path. The microphone is an input method only.
 
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
