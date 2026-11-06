@@ -1,0 +1,702 @@
+[
+  {
+    "name": "app.launch",
+    "description": "Open an installed application.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string",
+          "description": "Desktop-entry ID, such as org.gnome.Calculator.desktop"
+        }
+      },
+      "required": [
+        "app_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file.open",
+    "description": "Open a file with its default application.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Absolute file, trash or recent URI"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file.reveal",
+    "description": "Show a file in the Files browser.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Absolute file URI"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "place.open",
+    "description": "Open a standard folder such as Downloads or Documents.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "place": {
+          "type": "string",
+          "enum": [
+            "home",
+            "desktop",
+            "documents",
+            "downloads",
+            "music",
+            "pictures",
+            "videos",
+            "templates",
+            "public",
+            "trash",
+            "recent",
+            "screenshots"
+          ]
+        }
+      },
+      "required": [
+        "place"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "url.open",
+    "description": "Open a web link in the default browser.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "http or https URL"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "calendar.open",
+    "description": "Open the GNOME Calendar application.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "system.lock",
+    "description": "Lock the screen immediately.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "system.suspend",
+    "description": "Suspend the machine to RAM.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "session.logout",
+    "description": "Log out; GNOME asks to confirm.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "session.restart",
+    "description": "Restart; GNOME asks to confirm.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "session.power_off",
+    "description": "Power off; GNOME asks to confirm.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bluetooth.set",
+    "description": "Switch Bluetooth on, off or toggle it.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "wifi.set",
+    "description": "Switch Wi-Fi on, off or toggle it.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "audio.volume",
+    "description": "Turn the volume up or down one step.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down"
+          ]
+        }
+      },
+      "required": [
+        "direction"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "audio.volume_set",
+    "description": "Set the volume to a level from 0 to 100.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "display.brightness",
+    "description": "Turn the screen brightness up or down one step.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down"
+          ]
+        }
+      },
+      "required": [
+        "direction"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "display.brightness_set",
+    "description": "Set the screen brightness to a level from 0 to 100.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "audio.mute",
+    "description": "Mute or unmute the microphone and speaker.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "media.control",
+    "description": "Control the currently playing media.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": [
+            "play_pause",
+            "play",
+            "pause",
+            "next",
+            "previous",
+            "stop"
+          ]
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "appearance.dark",
+    "description": "Switch the dark style on, off or toggle it.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "display.night_light",
+    "description": "Switch the night light on, off or toggle it.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "display.night_light_temperature",
+    "description": "Set the night light colour temperature in kelvin.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": 1700,
+          "maximum": 6500
+        }
+      },
+      "required": [
+        "temperature"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "system.airplane",
+    "description": "Switch airplane mode on, off or toggle it.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "power.profile",
+    "description": "Choose the balanced, performance or power-saver profile.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": [
+            "balanced",
+            "performance",
+            "power-saver"
+          ]
+        }
+      },
+      "required": [
+        "profile"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "media.seek",
+    "description": "Seek the current media player forward or back by seconds.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "forward",
+            "back"
+          ]
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60
+        }
+      },
+      "required": [
+        "direction",
+        "seconds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bluetooth.connect",
+    "description": "Connect or disconnect a paired Bluetooth device by name.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "connect",
+            "disconnect"
+          ]
+        },
+        "device": {
+          "type": "string",
+          "description": "Device name"
+        }
+      },
+      "required": [
+        "action",
+        "device"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "terminal.open",
+    "description": "Open the configured terminal.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "timer.set",
+    "description": "Set a timer for a duration such as 10m or 1h30m.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "string",
+          "description": "Duration, for example 10m or 1h30m"
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional label"
+        }
+      },
+      "required": [
+        "duration"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "timer.cancel",
+    "description": "Cancel a timer by its label or number.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional timer label or number"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "timer.list",
+    "description": "List the running timers.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "alarm.set",
+    "description": "Set an alarm for a time such as 07:30.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "time": {
+          "type": "string",
+          "description": "Time, for example 07:30"
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional label"
+        }
+      },
+      "required": [
+        "time"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "alarm.cancel",
+    "description": "Cancel an alarm by its label or number.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional alarm label or number"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "alarm.list",
+    "description": "List the scheduled alarms.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "notifications.dnd",
+    "description": "Switch Do Not Disturb on, off or toggle it.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "on",
+            "off",
+            "toggle"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "clipboard.copy",
+    "description": "Copy text to the clipboard.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Text to copy"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "info.copy",
+    "description": "Copy a live system answer to the clipboard.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Answer title"
+        },
+        "text": {
+          "type": "string",
+          "description": "Answer text"
+        }
+      },
+      "required": [
+        "title",
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "search.files",
+    "description": "Search indexed files by name and content.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "help.show",
+    "description": "Show what SAM can do.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "clarify",
+    "description": "Ask one short question for a missing argument. Do not guess.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "string",
+          "enum": [
+            "app_id",
+            "uri",
+            "place",
+            "url",
+            "state",
+            "direction",
+            "level",
+            "temperature",
+            "command",
+            "profile",
+            "seconds",
+            "device",
+            "duration",
+            "time",
+            "text",
+            "query",
+            "title",
+            "id",
+            "which"
+          ]
+        }
+      },
+      "required": [
+        "slot"
+      ],
+      "additionalProperties": false
+    }
+  }
+]
