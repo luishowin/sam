@@ -169,3 +169,41 @@ pub fn tilde(path: &Path) -> String {
         Err(_) => path.display().to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn voice_defaults_to_eager_and_enabled() {
+        let config = Config::default();
+        assert!(config.voice.enabled);
+        assert_eq!(config.voice_mode(), "eager");
+    }
+
+    #[test]
+    fn voice_model_is_resolved_below_the_models_directory() {
+        let config = Config::default();
+        let path = config.voice.model_path();
+        assert_eq!(
+            path.file_name().and_then(|name| name.to_str()),
+            Some("moonshine-streaming")
+        );
+        assert!(path.starts_with(models_dir()));
+    }
+
+    #[test]
+    fn an_unknown_mode_falls_back_to_eager() {
+        let mut config = Config::default();
+        config.voice.mode = "sometimes".into();
+        assert_eq!(config.voice_mode(), "eager");
+    }
+
+    #[test]
+    fn disabling_voice_forces_off() {
+        let mut config = Config::default();
+        config.voice.mode = "eager".into();
+        config.voice.enabled = false;
+        assert_eq!(config.voice_mode(), "off");
+    }
+}

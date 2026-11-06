@@ -56,7 +56,7 @@ pub use engine::{VoiceConfig, VoiceEngine};
 pub use error::VoiceError;
 pub use model::{
     canonical_model_dir, default_models_root, discover_model_dir, layout_description, model_status,
-    model_status_for_root, ModelStatus,
+    model_status_for_root, resolve_model_dir, ModelStatus,
 };
 pub use protocol::{Command, Event};
 pub use setup::{download_and_install, install_archive, SetupOutcome};

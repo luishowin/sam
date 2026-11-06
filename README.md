@@ -361,7 +361,7 @@ See [docs/security-and-privacy.md](docs/security-and-privacy.md).
 - `crates/sam` — GTK4/libadwaita panel, CLI, setup and GApplication service;
 - a hand-authored registry covering apps, files, folders, settings, live system state,
   hardware, networking, brightness and display controls;
-- push-to-talk voice, immediate safe execution and a live timer card;
+- push-to-talk voice (hold Tab or the microphone), immediate safe execution and a live timer card;
 - a terminal configuration menu (`sam config`) and a Unix-socket JSON API;
 - unit tests, live-source checks, a benchmark command and an RPM build.
 
@@ -413,6 +413,9 @@ sam setup                    # Super+Space and the user service
 ```
 
 The RPM path is in [`docs/fedora-prototype.md`](docs/fedora-prototype.md).
+
+With voice enabled, press Super+Space and hold **Tab** while speaking; release
+to transcribe. `sam config` switches voice between eager, lazy and off.
 
 ## Contributing
 

@@ -5,6 +5,7 @@
 //! it out. The microphone is an input method only.
 
 use std::cell::{Cell, RefCell};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -38,6 +39,7 @@ const FILE_DELAY: Duration = Duration::from_millis(80);
 const MIC_MARK: i32 = 16;
 
 const PLACEHOLDER: &str = "Search files, apps, settings or system";
+const FOOTER_IDLE: &str = "↑↓ choose · ↵ open · hold tab to speak · esc close";
 
 /// Actions that start something and may run before the panel hides.
 const LAUNCHES: &[&str] = &["app.launch", "file.open", "file.reveal", "place.open", "url.open"];
@@ -64,8 +66,12 @@ pub struct Panel {
     pending: RefCell<Option<(usize, Pending)>>,
     file_source: RefCell<Option<glib::SourceId>>,
     voice: RefCell<Option<VoiceEngine>>,
+    voice_model: PathBuf,
     voice_mode: String,
     voice_threads: usize,
+    voice_ready: Cell<bool>,
+    pending_start: Cell<bool>,
+    tab_held: Cell<bool>,
     listening: Cell<bool>,
     from_voice: Cell<bool>,
     voice_cancelled: Cell<bool>,
@@ -92,7 +98,7 @@ impl Panel {
         let mic = gtk::Button::builder()
             .child(&gtk::Image::from_icon_name("audio-input-microphone-symbolic"))
             .valign(gtk::Align::Center)
-            .tooltip_text("Hold to speak (local, offline)")
+            .tooltip_text("Hold Tab or the microphone to speak (local, offline)")
             .css_classes(["sam-mic"])
             .build();
         if let Some(image) = mic.child().and_then(|c| c.downcast::<gtk::Image>().ok()) {
@@ -118,7 +124,7 @@ impl Panel {
         let footer = gtk::Label::builder()
             .xalign(0.0)
             .css_classes(["sam-footer"])
-            .label("↑↓ choose · ↵ open · esc close")
+            .label(FOOTER_IDLE)
             .build();
 
         let card_content = gtk::Box::builder()
@@ -173,8 +179,9 @@ impl Panel {
 
         let config = Config::load();
         let voice_mode = config.voice_mode().to_owned();
+        let voice_model = config.voice.model_path();
         let voice = if voice_mode == "eager" {
-            spawn_voice(config.voice.threads)
+            spawn_voice(config.voice.threads, Some(voice_model.clone()))
         } else {
             None
         };
@@ -200,8 +207,12 @@ impl Panel {
             pending: RefCell::new(None),
             file_source: RefCell::new(None),
             voice: RefCell::new(voice),
+            voice_model,
             voice_mode,
             voice_threads: config.voice.threads,
+            voice_ready: Cell::new(false),
+            pending_start: Cell::new(false),
+            tab_held: Cell::new(false),
             listening: Cell::new(false),
             from_voice: Cell::new(false),
             voice_cancelled: Cell::new(false),
@@ -239,7 +250,7 @@ impl Panel {
             p.activate(index);
         });
 
-        // Push-to-talk: hold the mic while speaking, release to stop.
+        // Push-to-talk: hold Tab or the mic while speaking, release to stop.
         let gesture = gtk::GestureClick::new();
         let p = panel.clone();
         gesture.connect_pressed(move |_, _, _, _| p.start_listen());
@@ -251,6 +262,8 @@ impl Panel {
         keys.set_propagation_phase(gtk::PropagationPhase::Capture);
         let p = panel.clone();
         keys.connect_key_pressed(move |_, key, _, _| p.key(key));
+        let p = panel.clone();
+        keys.connect_key_released(move |_, key, _, _| p.key_released(key));
         panel.window.add_controller(keys);
 
         // The window is a fixed-size transparent overlay, so a press below
@@ -333,6 +346,8 @@ impl Panel {
         }
         self.window.set_visible(false);
         self.stop_listen();
+        self.pending_start.set(false);
+        self.tab_held.set(false);
         self.entry.set_text("");
         self.rows.borrow_mut().clear();
         self.pending.borrow_mut().take();
@@ -435,7 +450,7 @@ impl Panel {
         let generation = self.generation.get().wrapping_add(1);
         self.generation.set(generation);
         self.pending.borrow_mut().take();
-        self.footer.set_label("↑↓ choose · ↵ open · esc close");
+        self.footer.set_label(FOOTER_IDLE);
 
         if text.trim().is_empty() {
             self.rows.borrow_mut().clear();
@@ -654,6 +669,17 @@ impl Panel {
 
     fn key(self: &Rc<Self>, key: gdk::Key) -> glib::Propagation {
         match key {
+            gdk::Key::Tab => {
+                if self.voice_mode == "off" {
+                    return glib::Propagation::Proceed;
+                }
+                // Auto-repeat sends more presses while the key is held; only
+                // the first one starts the utterance.
+                if !self.tab_held.replace(true) {
+                    self.start_listen();
+                }
+                glib::Propagation::Stop
+            }
             gdk::Key::Escape => {
                 if self.listening.get() {
                     self.cancel_listen();
@@ -676,6 +702,15 @@ impl Panel {
             }
             _ => glib::Propagation::Proceed,
         }
+    }
+
+    fn key_released(&self, key: gdk::Key) {
+        if key != gdk::Key::Tab || !self.tab_held.replace(false) {
+            return;
+        }
+        // Release before the model is ready cancels the pending utterance.
+        self.pending_start.set(false);
+        self.stop_listen();
     }
 
     fn activate_selected(self: &Rc<Self>) {
@@ -734,16 +769,27 @@ impl Panel {
             return;
         }
         if self.voice.borrow().is_none() {
-            match spawn_voice(self.voice_threads) {
+            self.pending_start.set(true);
+            match spawn_voice(self.voice_threads, Some(self.voice_model.clone())) {
                 Some(engine) => {
                     *self.voice.borrow_mut() = Some(engine);
                     self.footer
-                        .set_label("Loading the speech model — hold again when ready");
+                        .set_label("Loading the speech model — keep holding");
                 }
-                None => self.footer.set_label("Speech: the worker could not start"),
+                None => {
+                    self.pending_start.set(false);
+                    self.footer.set_label("Speech: the worker could not start");
+                }
             }
             return;
         }
+        if !self.voice_ready.get() {
+            self.pending_start.set(true);
+            self.footer
+                .set_label("Loading the speech model — keep holding");
+            return;
+        }
+        self.pending_start.set(false);
         let voice = self.voice.borrow();
         let Some(voice) = voice.as_ref() else {
             return;
@@ -761,6 +807,7 @@ impl Panel {
     }
 
     fn stop_listen(&self) {
+        self.pending_start.set(false);
         if !self.listening.replace(false) {
             return;
         }
@@ -771,12 +818,13 @@ impl Panel {
         }
         self.mic.remove_css_class("listening");
         if self.footer.text().starts_with("Listening") {
-            self.footer.set_label("↑↓ choose · ↵ open · esc close");
+            self.footer.set_label(FOOTER_IDLE);
         }
     }
 
     fn cancel_listen(&self) {
         self.voice_cancelled.set(true);
+        self.pending_start.set(false);
         if !self.listening.replace(false) {
             return;
         }
@@ -784,7 +832,7 @@ impl Panel {
             let _ = voice.cancel();
         }
         self.mic.remove_css_class("listening");
-        self.footer.set_label("↑↓ choose · ↵ open · esc close");
+        self.footer.set_label(FOOTER_IDLE);
     }
 
     fn poll_voice(self: &Rc<Self>) {
@@ -795,11 +843,17 @@ impl Panel {
         for event in events {
             match event {
                 VoiceEvent::ModelsLoading => {
+                    self.voice_ready.set(false);
                     self.mic.set_tooltip_text(Some("Loading the local speech model…"));
                 }
                 VoiceEvent::ModelsReady => {
-                    self.mic
-                        .set_tooltip_text(Some("Hold to speak (local, offline)"));
+                    self.voice_ready.set(true);
+                    self.mic.set_tooltip_text(Some(
+                        "Hold Tab or the microphone to speak (local, offline)",
+                    ));
+                    if self.pending_start.replace(false) {
+                        self.start_listen();
+                    }
                 }
                 VoiceEvent::Listening => {
                     self.listening.set(true);
@@ -819,7 +873,7 @@ impl Panel {
                     self.listening.set(false);
                     self.mic.remove_css_class("listening");
                     if cancelled {
-                        self.footer.set_label("↑↓ choose · ↵ open · esc close");
+                        self.footer.set_label(FOOTER_IDLE);
                         continue;
                     }
                     if !text.is_empty() {
@@ -837,6 +891,8 @@ impl Panel {
                     }
                 }
                 VoiceEvent::Failed(text) => {
+                    self.voice_ready.set(false);
+                    self.pending_start.set(false);
                     self.listening.set(false);
                     self.mic.remove_css_class("listening");
                     self.footer.set_label(&format!("Speech: {text}"));
@@ -909,8 +965,9 @@ impl Panel {
     }
 }
 
-fn spawn_voice(threads: usize) -> Option<VoiceEngine> {
+fn spawn_voice(threads: usize, model: Option<PathBuf>) -> Option<VoiceEngine> {
     let mut config = VoiceConfig::default();
+    config.model = model;
     if threads > 0 {
         config.threads = threads;
     }

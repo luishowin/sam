@@ -25,7 +25,8 @@ use transcribe_rs::{SpeechModel, TranscribeOptions};
 use crate::audio::{self, CaptureMessage, InputCapture, SAMPLE_RATE};
 use crate::error::VoiceError;
 use crate::model::{
-    discover_model_dir, layout_description, missing_model_error, model_status, ModelStatus,
+    discover_model_dir, layout_description, missing_model_error, model_status, resolve_model_dir,
+    ModelStatus,
 };
 use crate::protocol::{Command, Event};
 
@@ -34,6 +35,8 @@ use crate::protocol::{Command, Event};
 pub struct VoiceConfig {
     /// Directory containing `moonshine-streaming/moonshine-small-streaming-en/`.
     pub models_root: PathBuf,
+    /// The `voice.model` selection from the config, if one was given.
+    pub model: Option<PathBuf>,
     /// ONNX Runtime intra-op threads. The guide recommends 2–4 for Moonshine.
     pub threads: usize,
     /// Minimum spacing between partial inference passes.
@@ -48,6 +51,7 @@ impl Default for VoiceConfig {
     fn default() -> Self {
         Self {
             models_root: crate::model::default_models_root(),
+            model: None,
             threads: 4,
             partial_interval: Duration::from_millis(800),
             min_partial_audio: Duration::from_millis(400),
@@ -66,6 +70,7 @@ pub struct VoiceEngine {
     event_rx: Receiver<Event>,
     worker: Option<JoinHandle<()>>,
     models_root: PathBuf,
+    model: Option<PathBuf>,
 }
 
 impl VoiceEngine {
@@ -74,6 +79,7 @@ impl VoiceEngine {
     /// or [`Event::Failed`].
     pub fn spawn(config: VoiceConfig) -> io::Result<Self> {
         let models_root = config.models_root.clone();
+        let model = config.model.clone();
         let (command_tx, command_rx) = mpsc::channel();
         let (event_tx, event_rx) = mpsc::channel();
 
@@ -86,6 +92,7 @@ impl VoiceEngine {
             event_rx,
             worker: Some(worker),
             models_root,
+            model,
         })
     }
 
@@ -101,7 +108,11 @@ impl VoiceEngine {
 
     /// Check the installed model files without blocking on model loading.
     pub fn model_status(&self) -> ModelStatus {
-        crate::model::model_status_for_root(&self.models_root)
+        let dir = match self.model.as_deref() {
+            Some(selection) => resolve_model_dir(selection),
+            None => discover_model_dir(&self.models_root),
+        };
+        model_status(&dir)
     }
 
     /// Ask the worker to open the microphone. Never blocks.
@@ -185,14 +196,18 @@ fn worker_main(config: VoiceConfig, command_rx: Receiver<Command>, events: Sende
         return;
     }
 
-    let model_dir = discover_model_dir(&config.models_root);
+    let model_dir = match config.model.as_deref() {
+        Some(selection) => resolve_model_dir(selection),
+        None => discover_model_dir(&config.models_root),
+    };
+    let layout_root = config.model.as_deref().unwrap_or(&config.models_root);
     let status = model_status(&model_dir);
     if !status.is_present() {
         let error = missing_model_error(&status);
         log::error!("{error}");
         let _ = events.send(Event::Failed(format!(
             "{error}\n\n{}",
-            layout_description(&config.models_root)
+            layout_description(layout_root)
         )));
         return;
     }

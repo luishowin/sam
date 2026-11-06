@@ -10,7 +10,7 @@ use sam_core::intent::{Intent, Value};
 use sam_core::policy::{self, CORE_LEVEL, Decision, Origin};
 use sam_core::rank::Candidate;
 
-use sam_linux::config::{tilde, Config};
+use sam_linux::config::Config;
 use sam_linux::executor::Executor;
 
 use crate::world::World;
@@ -351,11 +351,14 @@ pub fn log(args: &[String]) -> ExitCode {
 
 pub fn voice(args: &[String]) -> ExitCode {
     let root = sam_voice::default_models_root();
+    let config = Config::load();
+    let selection = config.voice.model_path();
     match args.first().map(String::as_str) {
         None | Some("status") => {
-            let status = sam_voice::model_status_for_root(&root);
+            let status = sam_voice::model_status(&sam_voice::resolve_model_dir(&selection));
             println!("engine:    Moonshine Small Streaming (local, offline)");
             println!("models:    {}", root.display());
+            println!("selected:  {}", selection.display());
             println!("model:     {}", status.dir().display());
             if status.is_present() {
                 println!("state:     ready");
@@ -422,7 +425,9 @@ pub fn doctor() -> ExitCode {
     println!("files:     LocalSearch adapter");
     println!("actions:   {}", Registry::core().specs().len());
     println!("network:   none (Sam has no egress)");
-    let speech = sam_voice::model_status_for_root(&sam_voice::default_models_root());
+    let speech = sam_voice::model_status(&sam_voice::resolve_model_dir(
+        &Config::load().voice.model_path(),
+    ));
     println!(
         "speech:    {}",
         if speech.is_present() { "ready" } else { "missing" }
@@ -501,7 +506,9 @@ fn config_status() {
         "auto-run:  {}",
         if config.voice.auto_run { "on" } else { "off" }
     );
-    let model = sam_voice::model_status_for_root(&sam_voice::default_models_root());
+    let model = sam_voice::model_status(&sam_voice::resolve_model_dir(
+        &config.voice.model_path(),
+    ));
     println!(
         "model:     {}",
         if model.is_present() { "ready" } else { "missing" }
@@ -537,7 +544,13 @@ fn service_menu() {
 
 fn voice_menu() {
     loop {
+        let config = Config::load();
         println!("\nVoice");
+        println!(
+            "  current: {} · model {}",
+            config.voice_mode(),
+            config.voice.model
+        );
         println!("  1. Enable (eager, instant)");
         println!("  2. Enable (lazy, low idle memory)");
         println!("  3. Disable");
@@ -572,7 +585,10 @@ fn voice_menu() {
                 Err(e) => println!("Voice setup failed: {e}"),
             },
             "5" => {
-                let status = sam_voice::model_status_for_root(&sam_voice::default_models_root());
+                let config = Config::load();
+                let selection = config.voice.model_path();
+                let status = sam_voice::model_status(&sam_voice::resolve_model_dir(&selection));
+                println!("Selected: {}", selection.display());
                 println!("Model: {}", status.dir().display());
                 println!("State: {}", if status.is_present() { "ready" } else { "missing" });
             }

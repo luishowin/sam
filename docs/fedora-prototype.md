@@ -80,7 +80,7 @@ Sam-owned timer until the Essential OS Clock app exists. See
 The guide is preserved at [`design/SPEECH_GUIDE.md`](design/SPEECH_GUIDE.md).
 
 - Moonshine Small Streaming English only.
-- Push-to-talk: hold the microphone, release to stop.
+- Push-to-talk: hold Tab or the microphone, release to stop.
 - On the final transcript, Sam runs one safe result immediately: an explicit
   open/launch verb, or a quick-action command. Risky actions show the normal
   confirmation; information and file results stay on screen for review.

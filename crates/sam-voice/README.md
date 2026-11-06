@@ -79,6 +79,10 @@ engine.stop()?;    // enqueue only
 engine.cancel()?;  // discard, no Final
 ```
 
+In the panel, both the microphone button and **hold-Tab** call `start()` on
+press and `stop()` on release. If the model is still warming up, the panel
+remembers the held key and starts listening once `ModelsReady` arrives.
+
 `VoiceEngine` is `Send` but not `Sync` (it owns the event receiver), so keep it
 in an `Rc` on the GTK main thread. Model loading happens on the worker at
 startup and is reported through `ModelsLoading`/`ModelsReady`.

@@ -154,14 +154,46 @@ pub fn discover_model_dir(models_root: &Path) -> PathBuf {
     canonical_model_dir(models_root)
 }
 
+/// Resolve the directory selected in `voice.model`.
+///
+/// The setting may name the models root, the `moonshine-streaming` family
+/// directory, or the model directory itself. The first complete directory wins;
+/// when nothing is installed, the selection itself is returned so the error
+/// names the path the user configured.
+pub fn resolve_model_dir(selection: &Path) -> PathBuf {
+    let candidates = [
+        selection.to_path_buf(),
+        selection.join(MODEL_VARIANT_DIR),
+        selection.join(MODEL_FAMILY_DIR).join(MODEL_VARIANT_DIR),
+        selection.join(MODEL_FAMILY_DIR),
+    ];
+
+    for candidate in candidates {
+        if model_status(&candidate).is_present() {
+            return candidate;
+        }
+    }
+
+    selection.to_path_buf()
+}
+
 /// Check the installed model below a models root, using the same discovery rules.
 pub fn model_status_for_root(models_root: &Path) -> ModelStatus {
     model_status(&discover_model_dir(models_root))
 }
 
+/// The directory the setup instructions should name for a selection.
+fn expected_model_dir(selection: &Path) -> PathBuf {
+    match selection.file_name().and_then(|name| name.to_str()) {
+        Some(MODEL_VARIANT_DIR) => selection.to_path_buf(),
+        Some(MODEL_FAMILY_DIR) => selection.join(MODEL_VARIANT_DIR),
+        _ => canonical_model_dir(selection),
+    }
+}
+
 /// A short, copy-pasteable description of the expected layout.
 pub fn layout_description(models_root: &Path) -> String {
-    let dir = canonical_model_dir(models_root);
+    let dir = expected_model_dir(models_root);
     format!(
         "expected model layout:\n{}\n├── frontend.ort\n├── encoder.ort\n├── adapter.ort\n├── cross_kv.ort\n├── decoder_kv.ort\n├── streaming_config.json\n└── tokenizer.bin\n\nrun `sam-voice setup` to download it from {DOWNLOAD_URL}",
         dir.display()
@@ -254,5 +286,38 @@ mod tests {
         let message = error.to_string();
         assert!(message.contains("Moonshine Small Streaming"));
         assert!(message.contains("sam-voice setup"));
+    }
+
+    #[test]
+    fn resolve_accepts_root_family_and_model_selection() {
+        let temp = TempDir::new("model-resolve");
+        let root = temp.path();
+        let nested = canonical_model_dir(root);
+        install_fake_model(&nested);
+
+        assert_eq!(resolve_model_dir(root), nested);
+        assert_eq!(resolve_model_dir(&root.join(MODEL_FAMILY_DIR)), nested);
+        assert_eq!(resolve_model_dir(&nested), nested);
+
+        let empty = root.join("not-installed");
+        assert_eq!(resolve_model_dir(&empty), empty);
+    }
+
+    #[test]
+    fn layout_names_the_selected_directory() {
+        let temp = TempDir::new("model-layout");
+        let root = temp.path();
+        assert!(layout_description(root).contains(
+            &canonical_model_dir(root).display().to_string()
+        ));
+        assert!(
+            layout_description(&root.join(MODEL_FAMILY_DIR)).contains(
+                &root
+                    .join(MODEL_FAMILY_DIR)
+                    .join(MODEL_VARIANT_DIR)
+                    .display()
+                    .to_string()
+            )
+        );
     }
 }
