@@ -194,15 +194,6 @@ pub const CORE_ACTIONS: &[ActionSpec] = &[
         Os,
     ),
     spec(
-        "doc.open",
-        "Open documentation",
-        "Open an installed manual page or local document.",
-        &[required("page", Kind::Text)],
-        LowRisk,
-        Never,
-        Os,
-    ),
-    spec(
         "url.open",
         "Open link",
         "Open a web link in the default browser.",
@@ -297,6 +288,30 @@ pub const CORE_ACTIONS: &[ActionSpec] = &[
         "audio.volume_set",
         "Set volume",
         "Set the volume to a level from 0 to 100.",
+        &[required(
+            "level",
+            Kind::Number {
+                min: 0.0,
+                max: 100.0,
+            },
+        )],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "display.brightness",
+        "Brightness",
+        "Turn the screen brightness up or down a step.",
+        &[required("direction", Kind::OneOf(&["up", "down"]))],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "display.brightness_set",
+        "Set brightness",
+        "Set the screen brightness to a level from 0 to 100.",
         &[required(
             "level",
             Kind::Number {
@@ -781,6 +796,8 @@ mod tests {
             intent("system.lock"),
             intent("bluetooth.set").arg("state", "off"),
             intent("audio.volume_set").arg("level", 35.0),
+            intent("display.brightness").arg("direction", "up"),
+            intent("display.brightness_set").arg("level", 35.0),
             intent("clipboard.copy").arg("text", "714"),
             intent("clipboard.copy").arg("text", "a".repeat(20_000)),
         ] {

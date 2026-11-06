@@ -5,13 +5,10 @@
 //! [`Executor::listen`], and from there through the microphone door
 //! (F30).
 
-use std::path::Path;
-
 use sam_core::action::Handler;
 use sam_core::entity::Entity;
 use sam_core::policy::Approved;
 use sam_core::result::{ExecutionResult, Status};
-use sam_core::trouble::Trouble;
 
 use crate::{ExecError, launch, system};
 
@@ -109,17 +106,6 @@ impl Executor {
                 launch::uri(&info.uri, ctx).map(|()| format!("Opened {}", info.title))
             }
             "url.open" => launch::uri(arg(a, "url")?, ctx).map(|()| "Opened".into()),
-            "doc.open" => {
-                let page = arg(a, "page")?;
-                if page.is_empty()
-                    || !page
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '+'))
-                {
-                    return Err(ExecError("that is not a valid manual page name".into()));
-                }
-                launch::uri(&format!("man:{page}"), ctx).map(|()| "Opened the manual".into())
-            }
             "calendar.open" => launch::app("org.gnome.Calendar.desktop", &[], ctx)
                 .map(|()| "Opened Calendar".into()),
             "system.lock" => system::lock(),
@@ -142,6 +128,11 @@ impl Executor {
             "display.night_light_temperature" => system::night_light_temperature(
                 a.number("temperature")
                     .ok_or_else(|| ExecError("night light needs a temperature".into()))?,
+            ),
+            "display.brightness" => system::brightness_step(arg(a, "direction")?),
+            "display.brightness_set" => system::brightness_set(
+                a.number("level")
+                    .ok_or_else(|| ExecError("brightness needs a level".into()))?,
             ),
             "system.airplane" => system::airplane(arg(a, "state")?),
             "power.profile" => system::power_profile(arg(a, "profile")?),

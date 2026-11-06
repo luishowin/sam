@@ -54,6 +54,21 @@ action = "notifications.dnd"
 kind = "Command"
 
 [[case]]
+query = "brightness up"
+action = "display.brightness"
+kind = "Command"
+
+[[case]]
+query = "dim the screen"
+action = "display.brightness"
+kind = "Command"
+
+[[case]]
+query = "set brightness to 40"
+action = "display.brightness_set"
+kind = "Command"
+
+[[case]]
 query = "night light off"
 action = "display.night_light"
 kind = "Command"

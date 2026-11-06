@@ -1,6 +1,6 @@
 # Fedora prototype
 
-**Status:** Implemented on the development machine · **Date:** 2026-11-05
+**Status:** Implemented on the development machine · **Date:** 2026-11-06
 
 This is the first running Sam. It replaces Ida on one Fedora workstation and
 proves the deterministic core, the Fedora adapters, the panel, the quick
@@ -14,13 +14,17 @@ actions and the local speech path. It is not the final Essential OS service.
   fuzzy ranking, confidence, typed intents, policy and execution results.
 - **`sam-linux`** — Fedora/GNOME adapters. Apps, LocalSearch files, projects,
   paths, live system state, hardware, networking, settings navigation,
-  documentation, fixed actions and systemd user timers.
+  fixed actions and systemd user timers.
 - **`sam-voice`** — local, offline English speech input. Push-to-talk, no
   generation, no network.
 - **`sam`** — GTK4/libadwaita panel, CLI, setup and the GApplication service.
 
 The panel is a 728×58 pill on an onyx surface with a results card below it,
-following `docs/design/search-bar.svg` and `docs/design/app-icon.svg`.
+following `docs/design/search-bar.svg` and `docs/design/app-icon.svg`. The
+selected result uses a solid `#0A0D11` fill with a `16px` radius. Because the
+window keeps a fixed transparent frame around the visible surfaces, a press
+outside the pill, results card or timer card dismisses the panel. The launcher
+icon uses the standard GNOME rounded-corner mask.
 
 ## Search domains
 
@@ -29,15 +33,15 @@ following `docs/design/search-bar.svg` and `docs/design/app-icon.svg`.
 | Applications | GIO desktop entries | `chrome`, `screenshot tool` |
 | Files and folders | LocalSearch via TinySPARQL, bounded walk fallback | `find the invoice PDF`, `~/Downloads` |
 | Projects | configured roots | `photodesk` |
-| Settings | app catalogue plus a curated panel map | `where is night light settings` |
-| Live system | `/proc`, `/sys`, `statvfs`, fixed `ps` | `what is using my RAM`, `disk space`, `uptime` |
-| Hardware | sysfs, DRM, thermal, PipeWire | `what GPU do I have`, `audio output`, `how hot` |
-| Networking | NetworkManager, BlueZ | `which network am I connected to`, `bluetooth` |
-| Local documentation | `/usr/share/man`, `/usr/share/doc` names | `man page for printf` |
+| Settings | app catalogue plus a curated map of every installed GNOME panel | `brightness`, `display settings`, `open wifi settings` |
+| Live system | `/proc`, `/sys`, `statvfs`, fixed `ps` | `what is using my RAM`, `what is my IP`, `what time is it`, `am I charging` |
+| Hardware | sysfs, DRM, thermal, PipeWire, logind | `what GPU do I have`, `audio output`, `screen brightness`, `how hot` |
+| Networking | NetworkManager, BlueZ | `which network am I connected to`, `what is my IP`, `bluetooth` |
 | Web handoff | a `url.open` result only | `how many planets…` |
 
-The file index is LocalSearch's. Sam does not build a second file index. The
-documentation index is names and section labels only in this slice.
+The file index is LocalSearch's. Sam does not build a second file index. Local
+documentation rows are not exposed in this build because their launch path was
+not working; a real documentation index remains future work.
 
 ## Actions
 
@@ -45,6 +49,7 @@ Safe, immediate:
 
 - open, launch, reveal, copy
 - lock, volume, mute, media play/pause/next/previous/seek
+- screen brightness up/down and set to a level
 - Bluetooth on/off and connect/disconnect a paired device
 - Wi-Fi on/off, airplane mode
 - night light on/off and colour temperature
@@ -98,8 +103,11 @@ leaves the machine.
 sam                         # show the panel
 sam show "what is using my RAM"
 sam query "what GPU do I have"
+sam query "what is my IP address"
+sam query "how bright is my screen"
 sam query "does htop exist" --json
 sam run "lock my computer" --dry-run
+sam run "set brightness to 40"
 sam run "set a timer for 10m"
 sam voice status
 sam serve                   # JSON lines on $XDG_RUNTIME_DIR/sam.sock
@@ -202,7 +210,8 @@ resident memory, is the battery-relevant number; it is near zero after warm-up.
 - GNOME Clocks cannot be told to start a timer; see
   [`gnome-limitations.md`](gnome-limitations.md).
 - File search depends on LocalSearch indexing; the fallback walk is bounded.
-- Local documentation is name-level only, not full-text.
+- Local documentation rows are removed; a working documentation index and
+  full-text extraction remain future work.
 - The speech model is downloaded by `sam voice setup`; it is not shipped in
   the RPM. Its 158 MB on disk and ~240–300 MB resident cost exceed the
   provisional 4 GB budget. The config menu makes `lazy` and `off` available.

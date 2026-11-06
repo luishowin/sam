@@ -4,8 +4,8 @@ Sam's registry is split into two layers in the Fedora prototype:
 
 - `data/intents.toml` — the grammar-driven commands and quick actions. Each
   entry has an action, title, icon, fixed arguments and phrases.
-- live providers in `crates/sam-linux/src/info.rs` — system information,
-  settings navigation and local documentation. Each provider emits the same
+- live providers in `crates/sam-linux/src/info.rs` — system information and
+  the curated GNOME settings map. Each provider emits the same
   `Candidate`/`Intent` shape as the grammar.
 
 The long-term versioned registry described in

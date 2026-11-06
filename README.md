@@ -239,7 +239,8 @@ Each canonical intent maps to one reusable, version-controlled handler. A handle
 Opening a file, launching an application or navigating to a settings page is represented as a
 constrained **result action**, not arbitrary execution. Sam proposes actions; the caller
 validates and performs them. In the Fedora prototype the panel is the caller and performs a
-small fixed set of quick actions (volume, media, radios, night light, power profile, timers).
+small fixed set of quick actions (volume, media, screen brightness, radios, night light,
+power profile, timers).
 On Essential OS those route through the OS capability layer or Ida's executor. Sam never
 builds a shell command from user text.
 
@@ -359,7 +360,7 @@ See [docs/security-and-privacy.md](docs/security-and-privacy.md).
 - `crates/sam-voice` — local, offline push-to-talk speech input;
 - `crates/sam` — GTK4/libadwaita panel, CLI, setup and GApplication service;
 - a hand-authored registry covering apps, files, folders, settings, live system state,
-  hardware, networking and local documentation;
+  hardware, networking, brightness and display controls;
 - push-to-talk voice, immediate safe execution and a live timer card;
 - a terminal configuration menu (`sam config`) and a Unix-socket JSON API;
 - unit tests, live-source checks, a benchmark command and an RPM build.
@@ -391,7 +392,7 @@ The intended implementation sequence is:
 | **S1 — Deterministic core** | Query normalisation, domain registry, lexical matching, confidence thresholds, typed results and handoffs. | **Implemented** for the Fedora prototype; unit tests pass; a frozen evaluation corpus is still to come |
 | **S2 — Registry authoring** | Build-time model drafts and expands registry data. Human review, deduplication, handler validation and frozen evaluation sets. | Registry is versioned, reproducible, reviewable; untested entries cannot ship |
 | **S3 — Semantic retrieval** | Precomputed embeddings, compact query encoder loaded on demand, hybrid ranking. | Paraphrase recall improves enough to justify latency and RAM; lexical-only mode remains usable |
-| **S4 — Sources and handlers** | File, application, settings, hardware, system, media, networking and documentation sources with bounded incremental indexing. | **Partial:** Fedora sources and handlers implemented; documentation is name-level only |
+| **S4 — Sources and handlers** | File, application, settings, hardware, system, media, networking and documentation sources with bounded incremental indexing. | **Partial:** Fedora sources and handlers implemented; documentation rows are not exposed in this build |
 | **S5 — Search UI** | Integration with Essential OS global search, result templates, actions, disambiguation and handoff UX. | **Partial:** Fedora GTK4 panel and web handoff implemented; Essential OS integration pending |
 | **S6 — Ida integration** | Typed local API; route Ida's local-information lookups to Sam. | No duplicate indexes; Ida uses Sam without granting it action authority or model routing |
 | **S7 — Low-resource validation** | 4 GB systems, offline, index load, encoder cold start, failure injection, cache churn. | Memory, latency, accuracy, offline, privacy and no-memory gates pass |

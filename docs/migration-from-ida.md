@@ -90,7 +90,7 @@ rm -rf ~/.config/sam ~/.local/state/sam ~/.local/share/sam
 Sam's panel shell, Fedora adapters and setup logic began from Ida's MIT-licensed
 code. The copied files were renamed, stripped of AI, network, voice, weather,
 shell and conversation paths, and then extended with Sam's registry, live
-system providers, documentation provider, timers and speech worker. Ida's
+system providers, the settings map, timers and speech worker. Ida's
 licence and copyright remain in `LICENSE` and this record.
 
 No Ida source was moved into the Sam repository as an active assistant. The

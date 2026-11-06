@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use adw::prelude::*;
-use gtk::{gdk, glib};
+use gtk::{gdk, glib, graphene};
 
 use sam_core::files::FileQuery;
 use sam_core::policy::{self, Approved, CORE_LEVEL, Decision, Origin, Pending};
@@ -46,6 +46,7 @@ pub struct Panel {
     window: adw::ApplicationWindow,
     entry: gtk::Entry,
     mic: gtk::Button,
+    pill: Surface,
     card: Surface,
     timer_card: Surface,
     timer_clock: gtk::Label,
@@ -181,6 +182,7 @@ impl Panel {
             window: window.clone(),
             entry,
             mic,
+            pill,
             card,
             timer_card,
             timer_clock,
@@ -250,6 +252,21 @@ impl Panel {
         let p = panel.clone();
         keys.connect_key_pressed(move |_, key, _, _| p.key(key));
         panel.window.add_controller(keys);
+
+        // The window is a fixed-size transparent overlay, so a press below
+        // the visible surfaces would otherwise be swallowed. Dismiss on any
+        // press outside the pill, results card and timer card.
+        let outside = gtk::GestureClick::new();
+        outside.set_propagation_phase(gtk::PropagationPhase::Capture);
+        let p = panel.clone();
+        outside.connect_pressed(move |gesture, _, x, y| {
+            if p.point_in_panel(x, y) {
+                return;
+            }
+            gesture.set_state(gtk::EventSequenceState::Claimed);
+            p.hide("outside");
+        });
+        panel.window.add_controller(outside);
 
         let focus = gtk::EventControllerFocus::new();
         let p = panel.clone();
@@ -322,6 +339,21 @@ impl Panel {
         self.clear_rows();
         self.card.set_visible(false);
         self.timer_card.set_visible(false);
+    }
+
+    /// Whether a press at window coordinates lands on one of the visible
+    /// surfaces. Everything else in the transparent window dismisses it.
+    fn point_in_panel(&self, x: f64, y: f64) -> bool {
+        let point = graphene::Point::new(x as f32, y as f32);
+        [&self.pill, &self.card, &self.timer_card]
+            .into_iter()
+            .filter(|surface| surface.is_visible())
+            .any(|surface| {
+                let widget: &gtk::Widget = surface.upcast_ref();
+                widget
+                    .compute_bounds(&self.window)
+                    .is_some_and(|bounds| bounds.contains_point(&point))
+            })
     }
 
     // ---- timer card --------------------------------------------------------
@@ -847,7 +879,7 @@ impl Panel {
                 && matches!(
                     top.kind,
                     Kind::App | Kind::Place | Kind::File | Kind::Folder | Kind::Setting
-                        | Kind::Site | Kind::Doc
+                        | Kind::Site
                 ));
         if runnable {
             self.activate(0);

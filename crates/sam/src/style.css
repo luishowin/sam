@@ -67,7 +67,7 @@ entry.sam-entry selection {
 .sam-results row.sam-row {
   min-height: 36px;
   padding: 4px 10px;
-  border-radius: 10px;
+  border-radius: 16px;
 }
 
 .sam-results row.sam-row:hover {
@@ -75,12 +75,12 @@ entry.sam-entry selection {
 }
 
 .sam-results row.sam-row:selected {
-  background-color: alpha(#68b1ff, 0.22);
+  background-color: #0A0D11;
   color: inherit;
 }
 
 .sam-results row.sam-row:selected:hover {
-  background-color: alpha(#68b1ff, 0.28);
+  background-color: #0A0D11;
 }
 
 .sam-results row.sam-confirm {

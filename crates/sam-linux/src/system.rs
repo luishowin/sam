@@ -1,6 +1,8 @@
 //! The desktop's own switches (§7), over D-Bus, GSettings and `wpctl`.
 //! Everything that changes state is `pub(crate)`: only the executor calls it.
 
+use std::path::Path;
+
 use gio::prelude::*;
 
 use crate::ExecError;
@@ -240,6 +242,74 @@ pub fn source_muted() -> Result<bool, ExecError> {
     Ok(text.contains("[MUTED]"))
 }
 
+fn read_trim(path: &Path) -> Result<String, ExecError> {
+    std::fs::read_to_string(path)
+        .map(|s| s.trim().to_owned())
+        .map_err(|e| err(format!("{}: {e}", path.display())))
+}
+
+/// The first backlight device, its current raw value and its maximum
+/// (read-only).
+pub fn brightness() -> Result<(String, u32, u32), ExecError> {
+    let dir = std::fs::read_dir("/sys/class/backlight")
+        .map_err(|e| err(format!("/sys/class/backlight: {e}")))?
+        .flatten()
+        .map(|entry| entry.path())
+        .next()
+        .ok_or_else(|| err("this computer has no adjustable backlight"))?;
+    let device = dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let current = read_trim(&dir.join("brightness"))?
+        .parse::<u32>()
+        .map_err(|_| err("the backlight value is not a number"))?;
+    let max = read_trim(&dir.join("max_brightness"))?
+        .parse::<u32>()
+        .map_err(|_| err("the maximum backlight value is not a number"))?;
+    if max == 0 {
+        return Err(err("the backlight reports a maximum of zero"));
+    }
+    Ok((device, current, max))
+}
+
+/// Write a raw backlight value through logind. Direct sysfs writes need
+/// root; logind's `SetBrightness` lets the active session change it.
+fn set_brightness_raw(device: &str, value: u32) -> Result<(), ExecError> {
+    call(
+        gio::BusType::System,
+        "org.freedesktop.login1",
+        "/org/freedesktop/login1/session/auto",
+        "org.freedesktop.login1.Session",
+        "SetBrightness",
+        Some(("backlight", device, value).to_variant()),
+    )?;
+    Ok(())
+}
+
+pub(crate) fn brightness_step(direction: &str) -> Result<String, ExecError> {
+    let (device, current, max) = brightness()?;
+    let step = ((f64::from(max) * 0.05).round() as u32).max(1);
+    let next = match direction {
+        "up" => current.saturating_add(step).min(max),
+        "down" => current.saturating_sub(step).max(1),
+        other => return Err(err(format!("unknown direction {other:?}"))),
+    };
+    set_brightness_raw(&device, next)?;
+    Ok(format!(
+        "Brightness {:.0}%",
+        f64::from(next) / f64::from(max) * 100.0
+    ))
+}
+
+pub(crate) fn brightness_set(level: f64) -> Result<String, ExecError> {
+    let (device, _, max) = brightness()?;
+    let level = level.clamp(0.0, 100.0);
+    let raw = ((level / 100.0) * f64::from(max)).round() as u32;
+    set_brightness_raw(&device, raw.clamp(1, max))?;
+    Ok(format!("Brightness {level:.0}%"))
+}
+
 pub(crate) fn volume_step(direction: &str) -> Result<String, ExecError> {
     let step = match direction {
         "up" => "5%+",
@@ -441,6 +511,20 @@ pub(crate) fn power_profile(profile: &str) -> Result<String, ExecError> {
         profile.to_variant(),
     )?;
     Ok(format!("Power profile is {profile}"))
+}
+
+/// The active power profile (read-only).
+pub fn power_profile_current() -> Result<String, ExecError> {
+    let path = "/net/hadess/PowerProfiles";
+    let v = get_property(
+        gio::BusType::System,
+        POWER_PROFILES,
+        path,
+        POWER_PROFILES,
+        "ActiveProfile",
+    )?;
+    v.get::<String>()
+        .ok_or_else(|| err("ActiveProfile is not a string"))
 }
 
 pub(crate) fn media_seek(direction: &str, seconds: f64) -> Result<String, ExecError> {

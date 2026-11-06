@@ -483,8 +483,8 @@ fn weight(kind: Kind, query: &Query) -> f32 {
     match (kind, query.mode) {
         (Kind::Calculation | Kind::Conversion | Kind::Path, _) => PINNED,
         (Kind::Help, _) => 1.0,
-        (Kind::Info | Kind::Doc, Mode::Normal) => 1.0,
-        (Kind::Info | Kind::Doc, _) => 0.0,
+        (Kind::Info, Mode::Normal) => 1.0,
+        (Kind::Info, _) => 0.0,
         (Kind::Search | Kind::Answer, Mode::Normal) => 1.0,
         (Kind::Search | Kind::Answer, _) => 0.0,
         (Kind::App, Mode::Find) => 0.7,

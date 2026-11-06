@@ -95,8 +95,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %changelog
 * Thu Nov 05 2026 Luis Howin Maina <howin329@gmail.com> - 0.1.0-1
 - First Sam build: deterministic search over apps, files, folders, settings,
-  live system state, hardware and local documentation.
-- Fixed quick actions for session, sound, media, Bluetooth, Wi-Fi, airplane
-  mode, night light, dark style, focus mode, power profile and terminal.
+  live system state, hardware, networking and screen brightness.
+- Fixed quick actions for session, sound, media, screen brightness, Bluetooth,
+  Wi-Fi, airplane mode, night light, dark style, focus mode, power profile and
+  terminal.
 - Local timers and alarms through systemd user timers.
 - Replaces Ida on this machine; no AI mode, no network egress, no memory.

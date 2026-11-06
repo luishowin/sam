@@ -15,8 +15,6 @@ pub enum Kind {
     Command,
     /// A live answer about this computer.
     Info,
-    /// A local manual or installed document.
-    Doc,
     /// "Ask Sam" (§15).
     Answer,
     /// `/help` (§7).
@@ -40,7 +38,6 @@ impl Kind {
             Kind::Path => "Path",
             Kind::Command => "Command",
             Kind::Info => "Answer",
-            Kind::Doc => "Documentation",
             Kind::Answer => "Ask",
             Kind::Help => "Help",
             Kind::Place => "Folder",

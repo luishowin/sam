@@ -9,7 +9,7 @@ use sam_linux::apps::AppIndex;
 use sam_linux::config::Config;
 use sam_linux::files::FileIndex;
 use sam_linux::host::LinuxHost;
-use sam_linux::info::{Docs, Settings, SystemInfo};
+use sam_linux::info::{Settings, SystemInfo};
 use sam_linux::paths::PathProvider;
 use sam_linux::projects::ProjectIndex;
 
@@ -21,7 +21,6 @@ pub struct World {
     pub files: Arc<FileIndex>,
     pub paths: PathProvider,
     pub info: SystemInfo,
-    pub docs: Docs,
     pub settings: Settings,
 }
 
@@ -36,7 +35,6 @@ impl World {
             projects,
             paths: PathProvider,
             info: SystemInfo,
-            docs: Docs,
             settings: Settings,
         };
         world.projects.refresh_if_stale();
@@ -45,7 +43,8 @@ impl World {
 
     /// The synchronous half of a query: everything but files.
     pub fn search(&self, text: &str) -> Results {
-        let providers: [&dyn Provider; 6] = [&self.apps, &self.projects, &self.paths, &self.info, &self.docs, &self.settings];
+        let providers: [&dyn Provider; 5] =
+            [&self.apps, &self.projects, &self.paths, &self.info, &self.settings];
         self.engine.search(text, &LinuxHost, &providers)
     }
 

@@ -38,7 +38,7 @@ source code was moved from Ida into Sam.
 
 Sam now has a Fedora prototype. Its panel shell, Fedora adapters and setup logic began from
 Ida's MIT-licensed code, were stripped of AI, network, voice, weather, shell and conversation
-paths, and were extended with Sam's registry, live system providers, documentation, timers
+paths, and were extended with Sam's registry, live system providers, settings map, timers
 and speech worker. On the development machine Ida has been removed and Sam installed in its
 place; see [`migration-from-ida.md`](migration-from-ida.md). The Ida repository remains a
 separate project.

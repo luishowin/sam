@@ -391,6 +391,52 @@ patterns = [
 ]
 
 [[intent]]
+action = "display.brightness"
+title = "Brightness Up"
+icon = "display-brightness-symbolic"
+keywords = ["brighter", "screen brightness"]
+args = { direction = "up" }
+patterns = [
+  "brightness up",
+  "turn [up] brightness up",
+  "(turn|bring|crank) up brightness",
+  "make brightness up",
+  "(increase|raise|boost) [screen|display] brightness",
+  "(screen|display) brighter",
+  "(turn|make) (screen|display) brighter",
+  "brighter",
+]
+
+[[intent]]
+action = "display.brightness"
+title = "Brightness Down"
+icon = "display-brightness-symbolic"
+keywords = ["dimmer", "dim screen", "screen brightness"]
+args = { direction = "down" }
+patterns = [
+  "brightness down",
+  "turn [down] brightness down",
+  "(turn|bring) down brightness",
+  "make brightness down",
+  "(decrease|lower|reduce|dim) [screen|display] brightness",
+  "(screen|display) dimmer",
+  "(turn|make) (screen|display) dimmer",
+  "dim (screen|display)",
+  "dimmer",
+]
+
+[[intent]]
+action = "display.brightness_set"
+title = "Set Brightness"
+icon = "display-brightness-symbolic"
+keywords = ["screen brightness", "backlight"]
+patterns = [
+  "[set] brightness [to|at] {level:level}",
+  "[set] (screen|display) brightness [to|at] {level:level}",
+  "brightness {level:level}",
+]
+
+[[intent]]
 action = "system.airplane"
 title = "Airplane Mode On"
 icon = "airplane-mode-symbolic"
