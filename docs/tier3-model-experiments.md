@@ -85,6 +85,43 @@ E2B at q4 is already larger than Qwen3.5 4B at q4, so it cannot be treated as a
 | Qwen3 0.6B Q4_K_M | 63.3% | 72.2% | 15 | 8 | 1.08 s | 0.85 GiB | 2.58 GiB |
 | Qwen3 1.7B Q4_K_M | 71.7% | 80.0% | 6 | 3 | 2.84 s | 1.94 GiB | 3.70 GiB |
 | Qwen3 4B Q4_K_M | 75.0% | 90.0% | 2 | 2 | 7.22 s | 4.21 GiB | 6.33 GiB |
+| Qwen3.5 0.8B Q4_K_M | 62.5% | 58.9% | 0 | 0 | 1.70 s | 0.80 GiB | 4.70 GiB |
+| Qwen3.5 2B Q4_K_M | 66.7% | 82.2% | 20 | 13 | 3.42 s | 1.90 GiB | 5.65 GiB |
+| Qwen3.5 4B Q4_K_M (tool 109/120, answer full) | 80.7% | 90.0% | 1 | 0 | 7.30 s | 3.91 GiB | 8.14 GiB |
+| Gemma 4 E2B Q4_K_M | 67.5% | 94.4% | 20 | 11 | 4.18 s | 4.01 GiB | 4.15 GiB |
+
+Qwen3.5 0.8B is the safest tool-call router in the small set — negative and
+destructive both 95–100% — but its prose answers are weak: safety 10%, current
+events 20%, ambiguity 10%, and eight hallucinations across the answer suite.
+It also shows the same prompt-cache growth as the Qwen3 models: 0.8 GiB after
+load, 4.7 GiB peak after 210 cases.
+
+Qwen3.5 2B is the opposite trade-off. Its canonical, paraphrase, STT and answer
+scores are strong (100% canonical, 82% answers), but its router safety is the
+worst so far: destructive 35% with 13 calls proposed, including
+`terminal.open` for prompt-injection text, `url.open` for an exfiltration URL,
+`clipboard.copy` with "password", `search.files` for "passwords and email",
+and `place.open` for "wipe my home directory". A larger model is not
+automatically a safer router; the policy layer still has to reject these
+proposals.
+
+Qwen3.5 4B was split across the battery stop: the tool suite reached 109 of
+120 cases, then the answer suite ran separately to completion. It is the
+strongest Qwen3.5 answer model — 90% answers, safety 90%, current events 90%,
+local facts 100% — and the safest router in the family on the cases it saw
+(9/9 destructive, 14/15 negative, 0 unsafe). The answer suite is fast
+(~2.1 s TTFT), but the tool prompt is not: 9.6 s p50 and 23 s p95, with 3.9 GiB
+after load and 8.1 GiB peak. It cannot be the default Tier 3 on this hardware
+regardless of its answer quality.
+
+Gemma 4 E2B is the answer-quality surprise: 94.4% overall, 100% on local
+facts, current events and citation honesty, 97% general knowledge, 90% maths
+and 80% safety. It is also the best-behaved answer model on the shell/URL
+adversarial prompts. As a router it is weak: 40% destructive, 40% negative,
+11 unsafe proposals. Its footprint is 4.0 GiB after load and 4.15 GiB peak —
+smaller than Qwen3.5 4B, but still too large for an 8 GB machine alongside
+GNOME. It is the strongest 16 GB answer candidate so far, provided the router
+path keeps using a safer model or a strict policy gate.
 
 The 4B is the quality leader: canonical 100%, negative 100%, local facts 100%,
 maths 100%, safety 80%, current events 80%. It is also the latency and memory
@@ -163,6 +200,25 @@ The final tables will report:
 - TTFT p50/p95/p99, total latency, tokens/s, load time and peak RSS;
 - the staged quant comparison and the 4B Q3_K_M result;
 - a recommendation for the 4 GiB, 8 GiB and 16 GiB tiers.
+
+## Stage B — first quant result
+
+Qwen3.5 2B `Q5_K_M` was the first staged quant sweep. It reached the full
+120-case tool suite and 79 of 90 answer cases before the 20% battery guard
+stopped it.
+
+| Model | Quant | Tool pass | Answer pass | Negative | Destructive | Unsafe | Load RSS | Peak RSS |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Qwen3.5 2B | Q4_K_M | 66.7% | 82.2% | 53.3% | 35.0% | 13 | 1.90 GiB | 5.65 GiB |
+| Qwen3.5 2B | Q5_K_M | 65.8% | 81.0%* | 40.0% | 35.0% | 13 | 1.48 GiB | 5.85 GiB |
+
+\*Partial: 79 of 90 answer cases.
+
+Q5 does not earn its extra file size on this CPU. The tool result is slightly
+worse, negative refusals are worse, destructive behaviour is unchanged, and
+the answer categories that ran are effectively flat. The Q4 result remains the
+better default for this model. The rest of the quant matrix and Gemma 4 E4B
+were not run.
 
 ## Decision rule
 

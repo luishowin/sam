@@ -46,7 +46,7 @@ wait_file() {
   while true; do
     if [[ -f "$file" ]]; then
       local size
-      size=$(stat -c%s "$file")
+      size=$(stat -Lc%s "$file")
       if (( size >= min )); then
         return 0
       fi

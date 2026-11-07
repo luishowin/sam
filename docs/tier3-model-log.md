@@ -139,3 +139,73 @@ summary, and exits 42; the orchestrator writes `BATTERY_STOP` and stops.
 Qwen3.5 0.8B started first. Under load the charger still reported 0 W net
 input, so the guard is the only thing preventing a repeat of the previous
 shutdown.
+
+Qwen3.5 0.8B completed before the guard was needed:
+
+| Model | Tool pass | Answer pass | Conf-wrong | Unsafe | TTFT p50 | Load RSS | Peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Qwen3.5 0.8B Q4_K_M | 62.5% | 58.9% | 0 | 0 | 1.70 s | 0.80 GiB | 4.70 GiB |
+
+Its tool safety is good (negative 100%, destructive 95%), but its answer
+safety is poor (10%, three hallucinations) and ambiguity is 10%. It is not a
+Tier 3 answer candidate. Qwen3.5 2B started next.
+
+Qwen3.5 2B completed:
+
+| Model | Tool pass | Answer pass | Conf-wrong | Unsafe | TTFT p50 | Load RSS | Peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Qwen3.5 2B Q4_K_M | 66.7% | 82.2% | 20 | 13 | 3.42 s | 1.90 GiB | 5.65 GiB |
+
+It has the best answer score of the Qwen3.5 pair, but the worst router safety:
+destructive 35%, with `terminal.open`, `url.open`, `clipboard.copy`,
+`search.files` and `place.open` proposals on adversarial prompts. Safety is
+not monotonic in model size. Qwen3.5 4B started next.
+
+Qwen3.5 4B reached case 100/210 and the battery guard fired at 20%. It had
+completed 109 tool rows and no answer rows. The runner wrote its
+`summary.json` with `stopped_for_battery: true` and the orchestrator wrote
+`target/bench/stageA/BATTERY_STOP`. No benchmark process was left running.
+
+The 4B answer suite was run separately after the battery recovered: 90% pass,
+safety 90%, current 90%, local 100%, citation 80%, ambiguity 40%. The combined
+result is tool 80.7% (109/120), answer 90.0%, TTFT p50 7.30 s overall (tool
+9.63 s, answer 2.14 s), load RSS 3.91 GiB, peak 8.14 GiB.
+
+Gemma 4 E2B completed:
+
+| Model | Tool pass | Answer pass | Conf-wrong | Unsafe | TTFT p50 | Load RSS | Peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Gemma 4 E2B Q4_K_M | 67.5% | 94.4% | 20 | 11 | 4.18 s | 4.01 GiB | 4.15 GiB |
+
+It is the best answer model measured (94.4%, 100% local/current/citation) and
+the worst small router alongside Qwen3.5 2B (40% destructive, 40% negative,
+11 unsafe). Its load and peak RSS are nearly equal, unlike the Qwen prompt-cache
+growth.
+
+Gemma 4 E2B completed:
+
+| Model | Tool pass | Answer pass | Conf-wrong | Unsafe | TTFT p50 | Load RSS | Peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Gemma 4 E2B Q4_K_M | 67.5% | 94.4% | 20 | 11 | 4.18 s | 4.01 GiB | 4.15 GiB |
+
+It is the best answer model measured (94.4%, 100% local/current/citation) and
+the worst small router alongside Qwen3.5 2B (40% destructive, 40% negative,
+11 unsafe). Its load and peak RSS are nearly equal, unlike the Qwen prompt-cache
+growth.
+
+Qwen3.5 2B Q5_K_M ran as the first Stage B point. It completed the 120-case
+tool suite and 79/90 answer cases before the guard fired at 20% battery:
+
+| Quant | Tool pass | Answer pass | Negative | Destructive | Unsafe | Load RSS | Peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Q4_K_M | 66.7% | 82.2% | 53.3% | 35.0% | 13 | 1.90 GiB | 5.65 GiB |
+| Q5_K_M | 65.8% | 81.0%* | 40.0% | 35.0% | 13 | 1.48 GiB | 5.85 GiB |
+
+\*79 of 90 answer cases.
+
+Q5 did not improve the routing or safety behaviour and is slightly worse on the
+comparable answer categories. The rest of the quant matrix, Gemma 4 E4B and
+`llama-bench` remain unrun.
+
+Remaining work: Gemma 4 E4B, the rest of the staged quant sweep, and the
+`llama-bench` resource pass. Resume only when the charger can sustain the load.
