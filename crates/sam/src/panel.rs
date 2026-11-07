@@ -25,7 +25,7 @@ use sam_voice::{Event as VoiceEvent, VoiceConfig, VoiceEngine};
 use crate::row::Row;
 use crate::surface::{Shape, Surface};
 use crate::trace::trace;
-use crate::world::World;
+use crate::world::{NeedleReply, World};
 
 const FRAME_WIDTH: i32 = 760;
 const FRAME_HEIGHT: i32 = 500;
@@ -536,7 +536,7 @@ impl Panel {
     // ---- execution ---------------------------------------------------------
 
     fn activate(self: &Rc<Self>, index: usize) {
-        let Some(candidate) = self.rows.borrow().get(index).cloned() else {
+        let Some(mut candidate) = self.rows.borrow().get(index).cloned() else {
             return;
         };
 
@@ -549,6 +549,29 @@ impl Panel {
             return;
         }
 
+        // The deterministic engine only submits to the model where it has
+        // no confident row of its own: a file-search fallback, a web
+        // handoff, or nothing at all. Typing itself never waits for a model.
+        let model_origin = candidate.key.starts_with("model:")
+            || candidate.score < sam_core::engine::WEAK
+            || matches!(candidate.kind, Kind::Search | Kind::Site);
+        if model_origin && !candidate.key.starts_with("model:") {
+            let text = self.entry.text().to_string();
+            match self.world.needle_reply(&text) {
+                NeedleReply::Candidate(model) => candidate = model,
+                NeedleReply::Clarify(slot) => {
+                    self.say(&format!("Which {slot}?"));
+                    return;
+                }
+                NeedleReply::No => {}
+            }
+        }
+        let origin = if candidate.key.starts_with("model:") {
+            Origin::Model
+        } else {
+            Origin::UserSelected
+        };
+
         let registry = self.world.engine.registry();
         let validated = match registry.validate(candidate.intent.clone()) {
             Ok(v) => v,
@@ -557,13 +580,22 @@ impl Panel {
                 return;
             }
         };
-        match policy::decide(CORE_LEVEL, validated, Origin::UserSelected) {
+        match policy::decide(CORE_LEVEL, validated, origin) {
             Decision::Approved(approved) => self.run(approved, candidate),
             Decision::NeedsConfirmation(pending) => {
-                self.pending.replace(Some((index, pending)));
+                // A model result was not on screen when Enter was pressed.
+                // Show it as the only row, then ask for the same yes the
+                // panel already knows how to take.
+                let pending_index = if candidate.key.starts_with("model:") {
+                    self.render(vec![candidate]);
+                    0
+                } else {
+                    index
+                };
+                self.pending.replace(Some((pending_index, pending)));
                 self.footer
                     .set_label("Press ↵ again to confirm · esc cancels");
-                if let Some(row) = self.list.row_at_index(index as i32) {
+                if let Some(row) = self.list.row_at_index(pending_index as i32) {
                     row.add_css_class("sam-confirm");
                 }
             }
@@ -575,10 +607,17 @@ impl Panel {
 
     fn run(self: &Rc<Self>, approved: Approved, candidate: Candidate) {
         let action = approved.action().to_owned();
-        let keep_open = matches!(
-            action.as_str(),
-            "timer.set" | "timer.cancel" | "timer.list" | "alarm.list" | "help.show" | "info.copy"
-        );
+        let keep_open = action.starts_with("probe.")
+            || matches!(
+                action.as_str(),
+                "timer.set"
+                    | "timer.cancel"
+                    | "timer.list"
+                    | "alarm.list"
+                    | "help.show"
+                    | "info.copy"
+                    | "window.list"
+            );
         if !keep_open {
             if LAUNCHES.contains(&action.as_str()) {
                 self.hide("launch");
@@ -657,6 +696,16 @@ impl Panel {
                 }
                 self.timer_card.set_visible(false);
                 self.hide("timer-cancelled");
+            }
+            probe if probe.starts_with("probe.") => {
+                if let Some(output) = result.output {
+                    self.footer.set_label(&output.replace('\n', " · "));
+                }
+            }
+            "window.list" => {
+                if let Some(output) = result.output {
+                    self.footer.set_label(&output.replace('\n', " · "));
+                }
             }
             _ => {}
         }

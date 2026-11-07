@@ -2,6 +2,7 @@
 
 mod app;
 mod cli;
+mod needle;
 mod panel;
 mod row;
 mod serve;
@@ -30,6 +31,7 @@ USAGE
   sam config                  terminal configuration menu
   sam status                  status, version, service and memory
   sam doctor                  versions, sources and action count
+  sam schema [--fingerprint]  the canonical router catalogue
   sam log [journalctl args]   what went wrong today, from the journal
   sam --gapplication-service  run hidden, as the systemd unit does
   sam --gapplication-replace  replace a running instance (development)
@@ -46,6 +48,7 @@ fn main() -> ExitCode {
         Some("bench") => cli::bench(&args[2..]),
         Some("voice") => cli::voice(&args[2..]),
         Some("doctor") => cli::doctor(),
+        Some("schema") => cli::schema(&args[2..]),
         Some("serve") => serve::serve(&args[2..]),
         Some("config") => cli::config(&args[2..]),
         Some("status") => cli::status(),

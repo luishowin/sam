@@ -1,11 +1,19 @@
 # Window control
 
-**Status:** Design · **Scope:** Minimising, maximising, moving, centring and closing application windows on Fedora GNOME
+**Status:** Implemented and live-checked on GNOME Shell 51.1 (2026-11-07) · **Scope:** Minimising, maximising, moving, centring and closing application windows on Fedora GNOME
 
 Sam can already open and launch things. Window control is the missing half: "minimise Spotify",
 "maximise Chrome", "move Chrome to the right", "centre the Wikipedia window", "minimise
 everything". On GNOME Wayland this needs a small Shell extension, because Wayland deliberately
 prevents one client from manipulating another's surfaces.
+
+The extension, D-Bus client, `WindowBackend`, resolver, geometry and `sam setup` install/undo
+are implemented for GNOME Shell 51. `sam doctor` reports `window: ready` only when the
+extension is answering on the session bus; otherwise `window.*` fails closed with
+`source_unavailable`. The extension is enabled at install time but GNOME Shell only scans a
+newly written extension at login, so the first check requires one logout/login. After that
+first login, `window.list` returns the live windows; the per-action live check still has to
+cover minimise, maximise, move, centre and close-with-confirmation.
 
 ---
 

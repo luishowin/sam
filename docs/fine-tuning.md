@@ -211,6 +211,11 @@ The 20-layer tune is a candidate, not a shipped artifact: the real-use set, the 
 a sidecar p95 latency measurement are still outstanding. Local tuning also leaves
 `confidence = None`.
 
+The 0.2.0 candidate installs this artifact through the documented adapter in
+`sam/src/world.rs`, because the first-run catalogue used `app`, `path` and `kelvin`. The next
+run should `sam schema > tools.json` and train on the canonical `app_id`, `uri` and
+`temperature` contract.
+
 The exact commands, small-GPU notes and troubleshooting table are in
 [`fine-tuning-runbook.md`](fine-tuning-runbook.md).
 

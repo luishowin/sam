@@ -27,6 +27,13 @@
 # ── Places ────────────────────────────────────────────────────────────────
 
 [[intent]]
+action = "window.show_desktop"
+title = "Show Desktop"
+icon = "desktop-symbolic"
+patterns = ["show desktop", "(minimise|minimize) everything"]
+
+
+[[intent]]
 action = "place.open"
 title = "Open folder"
 icon = "folder-symbolic"
@@ -350,6 +357,108 @@ patterns = [
   "what is on (calendar|agenda|schedule) [today]",
   "(show|what are) [today] (events|meetings|appointments) [today]",
 ]
+
+[[intent]]
+action = "clock.open"
+title = "Open Clocks"
+icon = "preferences-system-time-symbolic"
+keywords = ["clock", "clocks", "world clock"]
+patterns = [
+  "(open|show|launch) (clock|clocks)",
+  "clock",
+  "clocks",
+  "world clock",
+]
+
+[[intent]]
+action = "notes.open"
+title = "Open Notes"
+icon = "accessories-text-editor-symbolic"
+keywords = ["notes", "note", "text editor"]
+patterns = [
+  "(open|show|launch) (notes|text editor)",
+  "notes",
+  "text editor",
+  "(open|show) note {name:rest}",
+]
+
+[[intent]]
+action = "probe.boot_history"
+title = "Boot History"
+icon = "preferences-system-symbolic"
+keywords = ["boot", "startup", "shutdown history"]
+patterns = [
+  "(boot|startup) history",
+  "recent (boots|shutdowns)",
+  "(when did|when was) (this computer|this machine|this laptop|computer|machine|laptop) [last] boot",
+  "last boot",
+]
+
+[[intent]]
+action = "probe.failed_services"
+title = "Failed Services"
+icon = "dialog-warning-symbolic"
+keywords = ["failed services", "failed units"]
+patterns = [
+  "failed (services|units)",
+  "what failed",
+  "(show|list) failed (services|units)",
+]
+
+[[intent]]
+action = "probe.network"
+title = "Network Status"
+icon = "network-wireless-symbolic"
+keywords = ["network status", "wifi status", "connection"]
+patterns = [
+  "network status",
+  "network connection",
+  "(wifi|wi-fi) status",
+]
+
+[[intent]]
+action = "window.list"
+title = "List Windows"
+icon = "view-list-symbolic"
+keywords = ["windows", "open windows"]
+patterns = ["(list|show) windows", "open windows"]
+
+[[intent]]
+action = "window.activate"
+title = "Switch Window"
+icon = "view-grid-symbolic"
+patterns = ["(switch to|activate|focus) {target:rest}"]
+
+[[intent]]
+action = "window.minimize"
+title = "Minimise Window"
+icon = "window-minimize-symbolic"
+patterns = ["(minimize|minimise|hide) {target:rest}"]
+
+[[intent]]
+action = "window.maximize"
+title = "Maximise Window"
+icon = "window-maximize-symbolic"
+patterns = ["(maximize|maximise) {target:rest}"]
+
+[[intent]]
+action = "window.restore"
+title = "Restore Window"
+icon = "window-restore-symbolic"
+patterns = ["(restore|unmaximize|unmaximise) {target:rest}"]
+
+[[intent]]
+action = "window.center"
+title = "Centre Window"
+icon = "window-center-symbolic"
+patterns = ["(center|centre) {target:rest}"]
+
+[[intent]]
+action = "window.close"
+title = "Close Window…"
+subtitle = "Asks first"
+icon = "window-close-symbolic"
+patterns = ["close {target:rest}"]
 
 # ── Display, power and devices ────────────────────────────────────────────
 

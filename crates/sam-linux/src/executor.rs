@@ -37,6 +37,31 @@ pub fn entities_for(approved: &Approved) -> Vec<Entity> {
     Entity::from_key(&key, &name).into_iter().collect()
 }
 
+/// `notes.open`: no name opens Text Editor; a name opens `~/Notes/<name>`
+/// with an `.md`/`.txt` fallback. It never creates a file and never walks
+/// outside the Notes folder.
+fn open_notes(name: Option<&str>, ctx: &gio::AppLaunchContext) -> Result<String, ExecError> {
+    let Some(name) = name.map(str::trim).filter(|n| !n.is_empty()) else {
+        return launch::app("org.gnome.TextEditor.desktop", &[], ctx)
+            .map(|()| "Opened Text Editor".into());
+    };
+    if name.contains('/') || name.contains('\\') || name == "." || name == ".." {
+        return Err(ExecError("a note name cannot contain a path".into()));
+    }
+    let folder = glib::home_dir().join("Notes");
+    let candidates = [
+        folder.join(name),
+        folder.join(format!("{name}.md")),
+        folder.join(format!("{name}.txt")),
+    ];
+    let Some(path) = candidates.into_iter().find(|p| p.is_file()) else {
+        return Err(ExecError(format!("no note named {name:?} in ~/Notes")));
+    };
+    let uri = glib::filename_to_uri(&path, None)
+        .map_err(|e| ExecError(format!("{}: {e}", path.display())))?;
+    launch::uri(uri.as_str(), ctx).map(|()| format!("Opened {name}"))
+}
+
 impl Executor {
     /// Carries out `approved`. `ctx` is the panel's launch context, so what
     /// starts gets an activation token (§10). Returns a line for the user.
@@ -108,6 +133,9 @@ impl Executor {
             "url.open" => launch::uri(arg(a, "url")?, ctx).map(|()| "Opened".into()),
             "calendar.open" => launch::app("org.gnome.Calendar.desktop", &[], ctx)
                 .map(|()| "Opened Calendar".into()),
+            "clock.open" => launch::app("org.gnome.clocks.desktop", &[], ctx)
+                .map(|()| "Opened Clocks".into()),
+            "notes.open" => open_notes(a.text("name"), ctx),
             "system.lock" => system::lock(),
             "system.suspend" => system::suspend(),
             "session.logout" => system::logout(),
@@ -145,6 +173,12 @@ impl Executor {
                 system::bluetooth_connect(arg(a, "action")?, arg(a, "device")?)
             }
             "terminal.open" => launch::terminal(ctx),
+            id if id.starts_with("window.") => crate::window::run(
+                id,
+                a.text("target"),
+                a.text("position"),
+            ),
+            id if id.starts_with("probe.") => crate::probes::run(id),
             "timer.set" => {
                 let started =
                     crate::timers::set_entry(arg(a, "duration")?, a.text("label").unwrap_or(""))?;

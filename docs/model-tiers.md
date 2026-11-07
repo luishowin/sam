@@ -1,6 +1,6 @@
 # Model tiers
 
-**Status:** Design; no model tier ships in the Fedora prototype · **Scope:** Sam's routing, model boundaries and failure behaviour
+**Status:** Tier 1 candidate implemented in 0.2.0; no model tier in the frozen 0.1.0 baseline · **Scope:** Sam's routing, model boundaries and failure behaviour
 
 Sam is a search execution engine. Most requests are answered by deterministic code. Two small
 local models extend coverage: **Needle** routes phrasing the registry did not anticipate, and a
@@ -118,6 +118,13 @@ Sam uses it as a **fallback router**, not a primary one:
 The tier runs as a sidecar over a Unix socket. `sam-core` does not link the model, and the Sam
 process still makes no network calls. The speech worker in
 [`../crates/sam-voice/README.md`](../crates/sam-voice/README.md) is the existing pattern.
+
+The candidate sidecar is `packaging/needle/sam_needle_sidecar.py`; `sam-core/src/schema.rs`
+exports the catalogue, `sam/src/world.rs` does candidate retrieval and the model-to-runtime
+adapter, and `policy::Origin::Model` holds the reviewed reversible allowlist. The current
+artifact was trained on `app`, `path` and `kelvin`; the adapter resolves those to `app_id`,
+`uri` and `temperature`. The next retrain should emit the canonical schema directly. See
+[`needle-lts.md`](needle-lts.md).
 
 Fine-tuning is what makes this tier worth its footprint: the base model knows tool calling, and
 the tuned artifact knows Fedora GNOME vocabulary, Sam's action names and the argument shapes.

@@ -1,6 +1,6 @@
 # Investigation
 
-**Status:** Design · **Scope:** Read-only probes, content search and bounded Tier 3 investigation
+**Status:** Probe registry and templates implemented as a 0.2.0 candidate; content search and Tier 3 design · **Scope:** Read-only probes, content search and bounded Tier 3 investigation
 
 Sam can already answer from structured live state. Investigation extends that to questions whose
 answer lives in command output: "how long has my laptop been on", "when did it last boot", "what
@@ -9,6 +9,11 @@ failed at startup", "find documents that mention essential os".
 The model never writes a shell command. It selects a **probe** from a fixed registry; the
 registry owns the command. This is the same rule as every other action: models propose, code
 resolves.
+
+The fixed probes for uptime, boot history, battery, failed services, disk, network and
+temperature are implemented in `sam-linux/src/probes.rs`: fixed argv, a two-second timeout, a
+64 KiB output cap, no shell and no root. `search.content` with bounded roots and the bounded
+Tier 3 investigation loop remain design.
 
 ---
 

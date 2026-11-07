@@ -12,11 +12,13 @@ pub mod info;
 mod launch;
 pub mod log;
 pub mod paths;
+pub mod probes;
 pub mod projects;
 pub mod setup;
 pub mod system;
 pub mod timers;
 pub mod tinysparql;
+pub mod window;
 
 pub use launch::{scope_name, systemd_escape};
 

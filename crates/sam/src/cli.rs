@@ -5,15 +5,17 @@ use std::io::Write;
 use std::process::ExitCode;
 use std::time::Instant;
 
+use gio::prelude::*;
+
 use sam_core::action::{Handler, Registry};
 use sam_core::intent::{Intent, Value};
 use sam_core::policy::{self, CORE_LEVEL, Decision, Origin};
-use sam_core::rank::Candidate;
+use sam_core::rank::{Candidate, Kind};
 
 use sam_linux::config::Config;
 use sam_linux::executor::Executor;
 
-use crate::world::World;
+use crate::world::{NeedleReply, World};
 
 const USAGE: u8 = 2;
 const NOTHING: u8 = 4;
@@ -201,7 +203,25 @@ pub fn run(args: &[String]) -> ExitCode {
     world.projects.refresh_now();
     let timed = search_all(&world, &text);
     let rows = world.panel_rows(&timed.results, pick.max(1) + 8);
-    let Some(row) = rows.get(pick.saturating_sub(1)) else {
+    let mut row = rows.get(pick.saturating_sub(1)).cloned();
+    let mut origin = Origin::UserSelected;
+    let deterministic_weak = row
+        .as_ref()
+        .is_none_or(|c| c.score < sam_core::engine::WEAK || matches!(c.kind, Kind::Search | Kind::Site));
+    if deterministic_weak {
+        match world.needle_reply(&text) {
+            NeedleReply::Candidate(model) => {
+                row = Some(model);
+                origin = Origin::Model;
+            }
+            NeedleReply::Clarify(slot) => {
+                eprintln!("sam: which {slot}?");
+                return ExitCode::from(NOTHING);
+            }
+            NeedleReply::No => {}
+        }
+    }
+    let Some(row) = row else {
         eprintln!("sam: nothing matched {text:?}");
         return ExitCode::from(NOTHING);
     };
@@ -214,7 +234,7 @@ pub fn run(args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let decision = policy::decide(CORE_LEVEL, validated, Origin::UserSelected);
+    let decision = policy::decide(CORE_LEVEL, validated, origin);
     match decision {
         Decision::Approved(approved) => {
             println!(
@@ -414,6 +434,59 @@ pub fn status() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// `sam schema`: the exact catalogue the router and the teacher see.
+pub fn schema(args: &[String]) -> ExitCode {
+    let registry = Registry::core();
+    if flag(args, "--fingerprint") {
+        println!("{}", registry.schema_fingerprint());
+    } else {
+        println!("{}", registry.model_tools_json());
+    }
+    ExitCode::SUCCESS
+}
+
+fn window_status() -> String {
+    let dir = glib::user_data_dir()
+        .join("gnome-shell")
+        .join("extensions")
+        .join("sam-window@luishowin.github.io");
+    if !dir.join("extension.js").is_file() {
+        return "not installed".into();
+    }
+    if sam_linux::window::available() {
+        return "ready".into();
+    }
+    let enabled = gio::Settings::new("org.gnome.shell")
+        .strv("enabled-extensions")
+        .iter()
+        .any(|id| id.as_str() == "sam-window@luishowin.github.io");
+    if enabled {
+        "installed and enabled; log out and back in to load".into()
+    } else {
+        "installed, not enabled".into()
+    }
+}
+
+fn needle_status() -> String {
+    let artifact = glib::user_data_dir()
+        .join("sam")
+        .join("needle")
+        .join("sam-needle.cact");
+    let socket = std::env::var_os("SAM_NEEDLE_SOCKET")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("XDG_RUNTIME_DIR")
+                .map(std::path::PathBuf::from)
+                .map(|dir| dir.join("sam").join("needle.sock"))
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp/sam/needle.sock"));
+    match (socket.exists(), artifact.exists()) {
+        (true, _) => format!("ready ({})", socket.display()),
+        (false, true) => "artifact present, sidecar not running".into(),
+        (false, false) => "not installed".into(),
+    }
+}
+
 pub fn doctor() -> ExitCode {
     let world = World::new();
     world.projects.refresh_now();
@@ -424,6 +497,8 @@ pub fn doctor() -> ExitCode {
     println!("apps:      {} entries", world.apps.entries().len());
     println!("files:     LocalSearch adapter");
     println!("actions:   {}", Registry::core().specs().len());
+    println!("window:    {}", window_status());
+    println!("needle:    {}", needle_status());
     println!("network:   none (Sam has no egress)");
     let speech = sam_voice::model_status(&sam_voice::resolve_model_dir(
         &Config::load().voice.model_path(),

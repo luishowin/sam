@@ -512,19 +512,24 @@ separate project.
 The first Needle 3 fine-tune is complete. On the frozen 40-row holdout it moved tool names from
 23/32 to 26/32 and raw arguments from 20/32 to 24/32 (26/32 normalised), with negatives improving
 from 7/8 to 8/8 and no false positives. It is a candidate, not shipped: the real-use, safety and
-p95-latency gates are still open. See
-[docs/fine-tuning-runbook.md](docs/fine-tuning-runbook.md#first-run-record-2026-11-07).
+p95-latency gates are still open. The installed 0.1.0 baseline is recorded in
+[docs/stable-baseline.md](docs/stable-baseline.md).
+
+A local Needle sidecar, candidate retrieval, model-origin policy, the window-control extension
+and the read-only probe executor are now implemented in the development tree. The sidecar is
+optional and falls back to Tier 0. The integration is documented in
+[docs/needle-lts.md](docs/needle-lts.md); the canonical schema is `sam schema`. It is still a
+candidate until the retrain, real-use set, safety suite and sidecar p95 are recorded.
 
 What does **not** exist yet:
 
 - the final Essential OS shell integration;
 - the build-time registry authoring pipeline and frozen evaluation corpus;
 - semantic embeddings and a query encoder;
-- the model tiers: tool-schema export, router seam, Needle sidecar and offline answer model
-  (the Needle fine-tune itself is measured but not yet integrated);
-- window control: the GNOME Shell extension, D-Bus client and `window.*` actions;
-- investigation: the probe registry, probe executor, content search and the bounded Tier 3
-  loop;
+- the offline answer model (Tier 3);
+- content search with bounded roots (`search.content`);
+- the full real-use and safety evidence for the window, probe and Needle paths;
+- the `sam-needle` RPM and a support window for the pinned personal LTS;
 - a versioned local API schema and capability checks (a small JSON-lines Unix
   socket exists);
 - full-content documentation indexing;
@@ -583,7 +588,10 @@ sudo dnf install gtk4-devel libadwaita-devel alsa-lib-devel openssl-devel
 cargo test --workspace
 cargo build --release
 sam voice setup              # once: downloads the local speech model
-sam setup                    # Super+Space and the user service
+sam setup                    # Super+Space, service and window extension
+scripts/install-needle-dev.sh # optional: model, sidecar and user service
+sam doctor                   # versions, sources, window and Needle status
+sam schema --fingerprint     # canonical router catalogue hash
 ```
 
 The RPM path is in [`docs/fedora-prototype.md`](docs/fedora-prototype.md).

@@ -95,9 +95,12 @@ contracts are in [`docs/model-tiers.md`](docs/model-tiers.md); the harness is in
 | **M3 — Local answer** | 1–4B sidecar, offline path, trust labels, hardware tier. | Warm TTFT under 1 s, honest refusal, no unvalidated call |
 | **M4 — Escalation** | Ambiguous-tail routing and the tested recipe corpus. | Recovers most router failures; free-form shell stays display-only |
 
-M2 is partially met: the 20-layer tune beat the base on the frozen set (26/32 names, 24/32 raw
-arguments, negatives 8/8); the real-use and safety gates, and a sidecar p95 measurement, are still
-open. See [`docs/fine-tuning-runbook.md`](docs/fine-tuning-runbook.md#first-run-record-2026-11-07).
+M0's schema exporter now exists (`sam schema`), and M1's sidecar, candidate retrieval, `[]`/clarify
+contract and model-origin policy are implemented as a local candidate. M2 is partially met: the
+20-layer tune beat the base on the frozen set (26/32 names, 24/32 raw arguments, negatives 8/8); the
+real-use and safety gates, the canonical retrain and a sidecar p95 measurement are still open. See
+[`docs/fine-tuning-runbook.md`](docs/fine-tuning-runbook.md#first-run-record-2026-11-07) and
+[`docs/needle-lts.md`](docs/needle-lts.md).
 
 A phase that fails its gate is dropped, not carried forward.
 
@@ -108,6 +111,10 @@ A phase that fails its gate is dropped, not carried forward.
 | **W0 — Spike** | Minimal GNOME Shell extension, one D-Bus method, call it from Rust. | Works on the development machine; version and fragility recorded |
 | **W1 — Actions** | Registry entries, resolver, geometry, fake backend, `sam setup` install/undo. | Minimise, maximise, move, centre and close-with-confirmation pass the live check |
 
+The extension, D-Bus client, resolver, geometry, fake backend and `sam setup` install/undo are
+implemented. `window.list` is live-checked on GNOME Shell 51.1; the remaining per-action live
+checks are minimise, maximise, move, centre and close-with-confirmation. If the extension is
+missing or still waiting for the first login, `window.*` reports `source_unavailable` cleanly.
 Window control is deterministic and does not wait for a model.
 
 ## I0–I3 — Investigation
@@ -119,7 +126,9 @@ Window control is deterministic and does not wait for a model.
 | **I2 — Content search** | LocalSearch first, bounded `rg`/`grep` fallback, ranked paths, open/reveal. | Known document found; denied roots untouched |
 | **I3 — Tier 3 investigation** | Bounded three-probe loop, summary, trust label, fine-tune data. | Correct probe selection; no raw command; safety unchanged |
 
-I3 depends on M0. I0–I2 do not.
+I0 and I1 are implemented: fixed argv, read-only probes, timeouts, output caps and deterministic
+templates for uptime, boot history, battery, failed services, disk, network and temperature.
+I2 content search is still design-only. I3 depends on M0. I0–I2 do not.
 
 ## S4 — Sources and handlers
 

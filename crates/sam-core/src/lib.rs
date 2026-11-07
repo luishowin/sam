@@ -14,6 +14,7 @@ pub mod intent;
 pub mod policy;
 pub mod rank;
 pub mod result;
+pub mod schema;
 pub mod sites;
 pub mod text;
 pub mod trouble;

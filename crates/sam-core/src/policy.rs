@@ -55,6 +55,9 @@ pub const CORE_LEVEL: Level = Level::Suggest;
 pub enum Origin {
     /// As-you-type, or a model's own unpicked proposal.
     Automatic,
+    /// A local model's proposal. It is not a person and it is not a
+    /// transcript: only the reviewed low-risk allowlist may run unattended.
+    Model,
     /// Enter or a click on this result.
     UserSelected,
     /// A transcript of what was said (§16). It never approves a side
@@ -190,6 +193,88 @@ pub enum Decision {
     Denied(Denial),
 }
 
+/// Actions a model may run without a person picking the row.
+///
+/// Only reversible, low-risk actions belong here. `system.lock`,
+/// `session.*`, `window.close` and everything privileged or destructive are
+/// deliberately absent. The list is a policy decision, not a property the
+/// model can choose.
+pub const MODEL_AUTO_ACTIONS: &[&str] = &[
+    "app.launch",
+    "file.open",
+    "file.reveal",
+    "place.open",
+    "url.open",
+    "calendar.open",
+    "clock.open",
+    "notes.open",
+    "terminal.open",
+    "bluetooth.set",
+    "bluetooth.connect",
+    "wifi.set",
+    "system.airplane",
+    "audio.volume",
+    "audio.volume_set",
+    "audio.mute",
+    "media.control",
+    "media.seek",
+    "display.brightness",
+    "display.brightness_set",
+    "display.night_light",
+    "display.night_light_temperature",
+    "appearance.dark",
+    "notifications.dnd",
+    "power.profile",
+    "timer.set",
+    "timer.cancel",
+    "alarm.set",
+    "alarm.cancel",
+    "window.activate",
+    "window.minimize",
+    "window.maximize",
+    "window.restore",
+    "window.center",
+    "window.move",
+    "window.show_desktop",
+];
+
+pub fn is_model_auto(action: &str) -> bool {
+    MODEL_AUTO_ACTIONS.contains(&action)
+}
+
+fn decide_model(level: Level, validated: Validated) -> Decision {
+    let spec = validated.spec();
+    let rule = match spec.permission {
+        // Reads never change anything and are approved at every level.
+        Permission::Read => Rule::Approve,
+        // A model never approves a destructive or privileged action.
+        Permission::Destructive | Permission::Privileged => Rule::Confirm,
+        // Only the reviewed reversible list runs unattended.
+        Permission::LowRisk if is_model_auto(spec.id) => Rule::Approve,
+        Permission::LowRisk => Rule::Confirm,
+        // Shell-like execution stays a confirmation, never a model choice.
+        Permission::Execute => Rule::Confirm,
+    };
+    match rule {
+        Rule::Approve if level == Level::ReadOnly && spec.permission != Permission::Read => {
+            Decision::Denied(Denial {
+                action: spec.id.to_owned(),
+                level,
+                origin: Origin::Model,
+                permission: spec.permission,
+            })
+        }
+        Rule::Approve => Decision::Approved(Approved { validated }),
+        Rule::Confirm => Decision::NeedsConfirmation(Pending { validated }),
+        Rule::Deny => Decision::Denied(Denial {
+            action: spec.id.to_owned(),
+            level,
+            origin: Origin::Model,
+            permission: spec.permission,
+        }),
+    }
+}
+
 /// Unambiguous proposals: picked rows, typed gestures. The panel and CLI
 /// call this; behaviour is identical to before 0.0.6.
 pub fn decide(level: Level, validated: Validated, origin: Origin) -> Decision {
@@ -205,6 +290,9 @@ pub fn decide_with(
     origin: Origin,
     ambiguous: bool,
 ) -> Decision {
+    if origin == Origin::Model {
+        return decide_model(level, validated);
+    }
     let spec = validated.spec();
     match rule(level, origin, spec.permission, spec.confirmation, ambiguous) {
         Rule::Approve => Decision::Approved(Approved { validated }),
@@ -224,7 +312,7 @@ mod tests {
     use crate::action::Registry;
     use crate::intent::Source;
     use Level as L;
-    use Origin::{Automatic as Auto, Spoken as Said, UserSelected as User};
+    use Origin::{Automatic as Auto, Model as M, Spoken as Said, UserSelected as User};
     use Permission::{Destructive as X, Execute as E, LowRisk as S, Privileged as P, Read as R};
     use Rule::{Approve as A, Confirm as C, Deny as D};
 
@@ -296,6 +384,19 @@ mod tests {
 
     fn validated(action: &str) -> Validated {
         let intent = Intent::new(action, Source::Grammar);
+        let intent = match action {
+            "app.launch" => intent.arg("app_id", "org.gnome.Calculator.desktop"),
+            "file.open" => intent.arg("uri", "file:///home/luis/notes.txt"),
+            "place.open" => intent.arg("place", "downloads"),
+            "url.open" => intent.arg("url", "https://example.org"),
+            "search.files" => intent.arg("query", "notes"),
+            "timer.set" => intent.arg("duration", "10m"),
+            "audio.volume_set" | "display.brightness_set" => intent.arg("level", 30.0),
+            "window.minimize" | "window.maximize" | "window.restore" | "window.center"
+            | "window.activate" | "window.close" => intent.arg("target", "Terminal"),
+            "window.move" => intent.arg("target", "Terminal").arg("position", "left"),
+            _ => intent,
+        };
         Registry::core().validate(intent).unwrap()
     }
 
@@ -361,6 +462,51 @@ mod tests {
             decide(CORE_LEVEL, action(), User),
             Decision::Approved(_)
         ));
+    }
+
+    #[test]
+    fn model_low_risk_allowlist_runs_but_never_dangerous_actions() {
+        for action in [
+            "app.launch",
+            "file.open",
+            "place.open",
+            "url.open",
+            "clock.open",
+            "notes.open",
+            "timer.set",
+            "audio.volume_set",
+            "display.brightness_set",
+            "window.minimize",
+            "window.move",
+        ] {
+            assert!(
+                matches!(decide(L::Suggest, validated(action), M), Decision::Approved(_)),
+                "{action} should be model-auto"
+            );
+        }
+        for action in [
+            "system.lock",
+            "system.suspend",
+            "session.logout",
+            "session.restart",
+            "session.power_off",
+            "window.close",
+        ] {
+            assert!(
+                matches!(
+                    decide(L::Suggest, validated(action), M),
+                    Decision::NeedsConfirmation(_)
+                ),
+                "{action} must not run unattended"
+            );
+        }
+        // Reads are always free, including probes and window listing.
+        for action in ["search.files", "probe.uptime", "window.list"] {
+            assert!(
+                matches!(decide(L::Suggest, validated(action), M), Decision::Approved(_)),
+                "{action} should be read-only"
+            );
+        }
     }
 
     #[test]

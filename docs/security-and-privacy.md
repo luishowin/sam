@@ -131,6 +131,16 @@ the registry, decided by the policy table and run by one fixed handler. User tex
 becomes a shell command. The risky actions (suspend, log out, restart, power off) require a
 second confirmation.
 
+## Model proposals
+
+Needle is a proposal source, not an authority. A model result is parsed, resolved and
+validated against the same registry as a typed gesture, then decided with `Origin::Model`.
+Only the reviewed `MODEL_AUTO_ACTIONS` allowlist may run without a person picking the row;
+lock, session changes, `window.close`, destructive and privileged actions still confirm, and
+an unresolved app, file or window is rejected. The sidecar speaks JSON lines on a Unix socket
+created with mode `0600` and has no network code. Model calls are never reclassified as
+`UserSelected`.
+
 ## Cache sensitivity
 
 - Cache keys include normalised query, scope, permission context and source version.

@@ -212,6 +212,108 @@ pub const CORE_ACTIONS: &[ActionSpec] = &[
         Os,
     ),
     spec(
+        "clock.open",
+        "Clock",
+        "Open the GNOME Clocks application.",
+        &[],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "notes.open",
+        "Notes",
+        "Open Text Editor, or a note from the Notes folder by name.",
+        &[optional("name", Kind::Text)],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.list",
+        "Windows",
+        "List the open windows and their titles.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.activate",
+        "Switch window",
+        "Bring a window to the front.",
+        &[required("target", Kind::Text)],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.minimize",
+        "Minimise window",
+        "Minimise a window.",
+        &[required("target", Kind::Text)],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.maximize",
+        "Maximise window",
+        "Maximise a window.",
+        &[required("target", Kind::Text)],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.restore",
+        "Restore window",
+        "Restore a maximised window.",
+        &[required("target", Kind::Text)],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.center",
+        "Centre window",
+        "Centre a window on its monitor.",
+        &[required("target", Kind::Text)],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.move",
+        "Move window",
+        "Move a window to the left, right, top or bottom edge.",
+        &[
+            required("target", Kind::Text),
+            required("position", Kind::OneOf(&["left", "right", "top", "bottom"])),
+        ],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.show_desktop",
+        "Show desktop",
+        "Minimise the open windows to show the desktop.",
+        &[],
+        LowRisk,
+        Never,
+        Os,
+    ),
+    spec(
+        "window.close",
+        "Close window",
+        "Close a window. It can lose unsaved work, so it always asks.",
+        &[required("target", Kind::Text)],
+        Destructive,
+        Always,
+        Os,
+    ),
+    spec(
         "system.lock",
         "Lock screen",
         "Lock the screen immediately.",
@@ -530,6 +632,69 @@ pub const CORE_ACTIONS: &[ActionSpec] = &[
         Never,
         Panel,
     ),
+    spec(
+        "probe.uptime",
+        "Uptime",
+        "How long the machine has been up, and when it booted.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "probe.boot_history",
+        "Boot history",
+        "Recent boots and shutdowns from the journal.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "probe.battery",
+        "Battery",
+        "Battery charge and time remaining.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "probe.failed_services",
+        "Failed services",
+        "Failed systemd user services.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "probe.disk",
+        "Disk",
+        "Free and total space on the home filesystem.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "probe.network",
+        "Network",
+        "The active network connection and its name.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
+    spec(
+        "probe.temperature",
+        "Temperature",
+        "The hottest exposed thermal sensor.",
+        &[],
+        Read,
+        Never,
+        Os,
+    ),
     // `/help` answers locally: static text, no provider, no network.
     spec(
         "help.show",
@@ -547,11 +712,14 @@ pub const CORE_ACTIONS: &[ActionSpec] = &[
 ];
 
 /// The [`Destructive`] permission exists so the table cannot silently admit
-/// a data-destroying action: nothing holds it yet, and this fails loudly if
-/// that ever changes without a policy test to match.
+/// a data-destroying action. `window.close` is the only one today, and it
+/// must always confirm.
 #[allow(dead_code)]
-fn destructive_is_unused(specs: &[ActionSpec]) -> bool {
-    !specs.iter().any(|s| s.permission == Destructive)
+fn destructive_is_only_window_close(specs: &[ActionSpec]) -> bool {
+    specs
+        .iter()
+        .filter(|s| s.permission == Destructive)
+        .all(|s| s.id == "window.close")
 }
 
 /// An intent the registry has checked. Only [`Registry::validate`] makes one.
@@ -635,6 +803,22 @@ impl Registry {
             .iter()
             .map(|s| format!("{} — {}", s.id, s.description))
             .collect()
+    }
+
+    /// The canonical JSON Schema catalogue for the router and the teacher.
+    /// Generated from the same specs the runtime validates.
+    pub fn tools_json(&self) -> String {
+        crate::schema::tools_json(self)
+    }
+
+    /// The router catalogue, including the `clarify` pseudo-tool.
+    pub fn model_tools_json(&self) -> String {
+        crate::schema::model_tools_json(self)
+    }
+
+    /// The fingerprint that travels with a router request.
+    pub fn schema_fingerprint(&self) -> String {
+        crate::schema::fingerprint(self)
     }
 
     /// Deterministic capability retrieval (§13): keep the specs sharing a
@@ -861,8 +1045,10 @@ mod tests {
         assert_eq!(perm("app.launch"), Permission::LowRisk);
         assert_eq!(r.get("clipboard.copy").unwrap().handler, Handler::Panel);
         assert_eq!(r.get("help.show").unwrap().handler, Handler::Panel);
-        // No capability destroys data without the table knowing it.
-        assert!(destructive_is_unused(r.specs()));
+        // The only destructive action is window.close, and it always asks.
+        assert!(destructive_is_only_window_close(r.specs()));
+        assert_eq!(r.get("window.close").unwrap().permission, Destructive);
+        assert_eq!(r.get("window.close").unwrap().confirmation, Confirmation::Always);
         // Every capability describes itself for retrieval (§13).
         for s in r.specs() {
             assert!(!s.description.is_empty(), "{} has no description", s.id);

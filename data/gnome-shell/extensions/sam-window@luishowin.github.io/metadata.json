@@ -1,0 +1,7 @@
+{
+  "uuid": "sam-window@luishowin.github.io",
+  "name": "Sam Window Control",
+  "description": "A narrow D-Bus window-control interface for Sam. No UI, no input injection, no eval.",
+  "shell-version": ["51"],
+  "version": 1
+}

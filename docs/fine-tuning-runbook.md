@@ -1,6 +1,6 @@
 # Fine-tuning runbook
 
-**Status:** Runbook; first tune complete and measured (2026-11-07) · **Scope:** How to fine-tune Needle for Sam, step by step
+**Status:** Runbook; first tune complete, measured and installed as a 0.2.0 candidate (2026-11-07) · **Scope:** How to fine-tune Needle for Sam, step by step
 
 This is the practical companion to [`fine-tuning.md`](fine-tuning.md). That document says what
 data is allowed and why; this one says which commands to run, in what order, and what breaks.
@@ -47,6 +47,23 @@ Set `CACTUS_TELEMETRY=0` or `DO_NOT_TRACK=1` if you want no anonymous usage coun
 | `heldout.jsonl` | Rows never used for training, for the final base-versus-tuned comparison |
 
 Do not call `data.jsonl` a JSON array. It is JSON Lines.
+
+### Canonical schema and the installed adapter
+
+Generate `tools.json` from the runtime, never by hand:
+
+```sh
+sam schema > tools.json
+sam schema --fingerprint
+```
+
+The canonical catalogue uses `app_id`, `uri` and `temperature`; `tools.json` from the first
+run used `app`, `path` and `kelvin`, and included `window.*`, `probe.*` and `search.content`.
+The 0.2.0 sidecar keeps that artifact usable through the documented adapter in
+`sam/src/world.rs`: an app name is resolved to a desktop ID, a path to an existing `file://`
+URI, and `kelvin` to `temperature`. An unresolved target is rejected; it is not silently
+translated. The next training run should use the canonical exporter so the adapter becomes a
+pass-through. See [`needle-lts.md`](needle-lts.md).
 
 A row:
 

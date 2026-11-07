@@ -27,6 +27,14 @@ const SHELL: &str = "org.gnome.shell";
 const ENABLED_KEY: &str = "enabled-extensions";
 /// The GNOME Shell extension 0.0.2 installed for the blur, retired (F24).
 const OLD_EXTENSION: &str = "sam@luishowin.github.io";
+/// Sam's narrow window-control extension.
+const WINDOW_EXTENSION: &str = "sam-window@luishowin.github.io";
+const WINDOW_METADATA: &str = include_str!(
+    "../../../data/gnome-shell/extensions/sam-window@luishowin.github.io/metadata.json"
+);
+const WINDOW_SCRIPT: &str = include_str!(
+    "../../../data/gnome-shell/extensions/sam-window@luishowin.github.io/extension.js"
+);
 
 /// Keys GNOME ships bound to Super+Space on this machine or on a fresh install.
 const CONFLICTS: &[(&str, &str)] = &[
@@ -64,6 +72,10 @@ struct State {
     /// only what SAM switched on is switched off (F24).
     #[serde(default)]
     enabled_extension: bool,
+    /// Whether this install added the window-control extension to GNOME's
+    /// enabled list, so `undo` only removes what SAM added.
+    #[serde(default)]
+    window_extension: bool,
 }
 
 /// A GNOME key SAM took `<Super>space` from.
@@ -178,6 +190,76 @@ fn retire_extension(state: &mut State, report: &mut Report) -> Result<(), SetupE
     Ok(())
 }
 
+fn window_extension_dir() -> PathBuf {
+    glib::user_data_dir()
+        .join("gnome-shell")
+        .join("extensions")
+        .join(WINDOW_EXTENSION)
+}
+
+fn window_extension_command(args: &[&str]) -> Result<(), String> {
+    let out = Command::new("gnome-extensions")
+        .args(args)
+        .output()
+        .map_err(|e| format!("gnome-extensions: {e}"))?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_owned())
+    }
+}
+
+fn install_window_extension(state: &mut State, report: &mut Report) -> Result<(), SetupError> {
+    let dir = window_extension_dir();
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| SetupError(format!("{}: {e}", dir.display())))?;
+    std::fs::write(dir.join("metadata.json"), WINDOW_METADATA)
+        .map_err(|e| SetupError(format!("{}: {e}", dir.join("metadata.json").display())))?;
+    std::fs::write(dir.join("extension.js"), WINDOW_SCRIPT)
+        .map_err(|e| SetupError(format!("{}: {e}", dir.join("extension.js").display())))?;
+
+    if let Some(shell) = settings(SHELL, ENABLED_KEY) {
+        let enabled = strings(&shell, ENABLED_KEY);
+        let added = with_item(&enabled, WINDOW_EXTENSION);
+        if added.len() != enabled.len() {
+            set_strings(&shell, ENABLED_KEY, &added)?;
+            state.window_extension = true;
+            report.push(format!("enabled {WINDOW_EXTENSION}"));
+        }
+    }
+    // Best effort: the Shell may not have scanned a newly written extension
+    // until the next login. The settings list above still enables it then.
+    if let Err(e) = window_extension_command(&["enable", WINDOW_EXTENSION]) {
+        report.push(format!(
+            "note: {WINDOW_EXTENSION} will load at the next login ({e})"
+        ));
+    }
+    Ok(())
+}
+
+fn remove_window_extension(state: &mut State, report: &mut Report) -> Result<(), SetupError> {
+    if state.window_extension {
+        if let Some(shell) = settings(SHELL, ENABLED_KEY) {
+            let enabled = strings(&shell, ENABLED_KEY);
+            let removed = without_item(&enabled, WINDOW_EXTENSION);
+            if removed.len() != enabled.len() {
+                set_strings(&shell, ENABLED_KEY, &removed)?;
+                report.push(format!("disabled {WINDOW_EXTENSION}"));
+            }
+        }
+        state.window_extension = false;
+    }
+    let dir = window_extension_dir();
+    if !dir.exists() {
+        return Ok(());
+    }
+    let _ = window_extension_command(&["disable", WINDOW_EXTENSION]);
+    std::fs::remove_dir_all(&dir)
+        .map_err(|e| SetupError(format!("{}: {e}", dir.display())))?;
+    report.push(format!("removed {WINDOW_EXTENSION}"));
+    Ok(())
+}
+
 /// Take Super+Space for SAM and enable its service.
 pub fn install() -> Result<Report, SetupError> {
     let mut report = Report::new();
@@ -230,6 +312,7 @@ pub fn install() -> Result<Report, SetupError> {
     gio::Settings::sync();
 
     retire_extension(&mut state, &mut report)?;
+    install_window_extension(&mut state, &mut report)?;
     write_state(&state)?;
 
     // Mutter places the panel; without this it lands wherever new windows
@@ -289,6 +372,7 @@ pub fn undo() -> Result<Report, SetupError> {
         }
     }
     retire_extension(&mut state, &mut report)?;
+    remove_window_extension(&mut state, &mut report)?;
     gio::Settings::sync();
 
     match systemctl(&["disable", "--now", &unit()]) {
@@ -371,6 +455,7 @@ mod tests {
                 previous: v(&["<Super>space"]),
             }],
             enabled_extension: true,
+            window_extension: true,
         };
         let text = toml::to_string(&state).unwrap();
         assert_eq!(toml::from_str::<State>(&text).unwrap(), state);

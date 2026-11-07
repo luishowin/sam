@@ -73,6 +73,12 @@ The first local tune measured a warm 40-call median of 227 ms for the base and 2
 measurement. The 20-layer 4-bit archive is 63.4 MB and the base 2-bit archive is 35.3 MB, both
 inside the 30–120 MB Tier 1 allowance.
 
+The 0.2.0 sidecar adds a separate process. Development observations on this laptop were roughly
+140–270 ms warm per call and 1–2.5 s for a cold tool subset while the model loads. The sidecar
+used about 12 MB idle and about 325–390 MB peak with a few warm agents, and the minimal runtime
+venv is 68 MB. These are observations, not a p95/p99 or minimum-hardware release measurement;
+the sidecar's `Nice=5` and 4-agent cache are the current bounds.
+
 ## Suggested memory allocation
 
 | Component | Allowance |

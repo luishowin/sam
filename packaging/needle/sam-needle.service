@@ -1,0 +1,17 @@
+[Unit]
+Description=Sam — local Needle router
+Documentation=https://github.com/luishowin/sam
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart="@python@" "@script@" --socket %t/sam/needle.sock --weights "@weights@"
+Environment=CACTUS_TELEMETRY=0
+Restart=on-failure
+RestartSec=2
+Nice=5
+
+[Install]
+WantedBy=graphical-session.target

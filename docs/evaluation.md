@@ -1,6 +1,6 @@
 # Evaluation
 
-**Status:** Design; the Fedora prototype has a 25-case corpus and an action-only test · **Scope:** How Sam measures routing, execution and resource behaviour
+**Status:** Harness partial; the 0.2.0 candidate adds a schema exporter and Needle sidecar, but the frozen corpus, real-use set and safety suite remain open · **Scope:** How Sam measures routing, execution and resource behaviour
 
 The harness is built before the model. A model, a fine-tune or a new tier is adopted only when
 it beats the current setup on a frozen set and does not regress safety. This document defines
@@ -227,4 +227,7 @@ user asks for a diagnostic capture, and that capture is deleted after review. Se
 | Paraphrase / STT / negative / follow-up / destructive sets | Missing |
 | `sam eval` | Planned |
 | Per-category report and regression exit code | Planned |
+| Tool-schema exporter | Exists: `sam schema`, `sam schema --fingerprint` |
+| Needle sidecar and candidate retrieval | Candidate in 0.2.0; no frozen real-use result |
 | Stage instrumentation and p95 | Partial (`sam bench` covers engine and file search only) |
+| Window and probe safety evidence | Missing; live window check pending login |

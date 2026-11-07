@@ -6,7 +6,7 @@
 %global app_id io.github.luishowin.Sam
 
 Name:           sam
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Search execution engine for this computer
 License:        MIT
@@ -93,6 +93,13 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
 
 %changelog
+* Sat Nov 07 2026 Luis Howin Maina <howin329@gmail.com> - 0.2.0-1
+- Local Needle sidecar, candidate retrieval and model-origin policy.
+- Window control through the narrow GNOME Shell extension.
+- Read-only probes for uptime, boot history, battery, failed services, disk,
+  network and temperature.
+- Clock and notes actions.
+
 * Thu Nov 05 2026 Luis Howin Maina <howin329@gmail.com> - 0.1.0-1
 - First Sam build: deterministic search over apps, files, folders, settings,
   live system state, hardware, networking and screen brightness.

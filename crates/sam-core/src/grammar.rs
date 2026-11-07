@@ -512,6 +512,23 @@ mod tests {
             ("turn wi-fi on", r#"wifi.set {state: "on"}"#),
             ("show me today's calendar", "calendar.open"),
             ("what's on today", "calendar.open"),
+            ("open clock", "clock.open"),
+            ("open notes", "notes.open"),
+            (
+                "open note groceries",
+                r#"notes.open {name: "groceries"}"#,
+            ),
+            ("boot history", "probe.boot_history"),
+            (
+                "when did this computer last boot",
+                "probe.boot_history",
+            ),
+            ("failed services", "probe.failed_services"),
+            ("show desktop", "window.show_desktop"),
+            (
+                "minimize firefox",
+                r#"window.minimize {target: "firefox"}"#,
+            ),
             ("open my downloads", r#"place.open {place: "downloads"}"#),
             ("downloads", r#"place.open {place: "downloads"}"#),
             ("go to the trash", r#"place.open {place: "trash"}"#),
