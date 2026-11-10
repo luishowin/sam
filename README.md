@@ -532,6 +532,7 @@ What does **not** exist yet:
 - the `sam-needle` RPM and a support window for the pinned personal LTS;
 - a versioned local API schema and capability checks (a small JSON-lines Unix
   socket exists);
+- Windows 11 support (planned in [docs/windows-port.md](docs/windows-port.md));
 - full-content documentation indexing;
 - measured 4 GB release gates and a packaged release beyond this prototype.
 
@@ -596,6 +597,10 @@ sam schema --fingerprint     # canonical router catalogue hash
 
 The RPM path is in [`docs/fedora-prototype.md`](docs/fedora-prototype.md).
 
+Windows 11 is not supported yet. A Windows port is planned but not started;
+the scope, architecture, milestones and risks are in
+[`docs/windows-port.md`](docs/windows-port.md).
+
 With voice enabled, press Super+Space and hold **Tab** while speaking; release
 to transcribe. `sam config` switches voice between eager, lazy and off.
 
@@ -637,6 +642,7 @@ MIT-licensed projects.
 - Fine-tuning runbook: [docs/fine-tuning-runbook.md](docs/fine-tuning-runbook.md)
 - Offline and web handoff: [docs/offline-and-web.md](docs/offline-and-web.md)
 - Fedora prototype: [docs/fedora-prototype.md](docs/fedora-prototype.md)
+- Windows 11 port plan: [docs/windows-port.md](docs/windows-port.md)
 - Migration from Ida: [docs/migration-from-ida.md](docs/migration-from-ida.md)
 - GNOME limitations: [docs/gnome-limitations.md](docs/gnome-limitations.md)
 - Essential OS project record: <https://github.com/luishowin/essential-os>

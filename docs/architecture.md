@@ -7,6 +7,11 @@ Fedora prototype is real; the model tiers, Essential OS service and release gate
 [`fedora-prototype.md`](fedora-prototype.md) for what runs today and
 [`model-tiers.md`](model-tiers.md) for the model contracts.
 
+Windows 11 is a planned port, not an implemented platform. The adapter boundary
+described here is what makes it feasible: the port adds a `sam-windows` crate
+behind the same `Host`, `Provider` and `Executor` seams. See
+[`windows-port.md`](windows-port.md).
+
 ---
 
 ## Position in Essential OS
