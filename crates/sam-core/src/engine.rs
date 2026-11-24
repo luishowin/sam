@@ -483,6 +483,9 @@ fn weight(kind: Kind, query: &Query) -> f32 {
     match (kind, query.mode) {
         (Kind::Calculation | Kind::Conversion | Kind::Path, _) => PINNED,
         (Kind::Help, _) => 1.0,
+        // The panel adds its definition row after ranking, so it never
+        // competes through the engine.
+        (Kind::Definition, _) => 0.0,
         (Kind::Info, Mode::Normal) => 1.0,
         (Kind::Info, _) => 0.0,
         (Kind::Search | Kind::Answer, Mode::Normal) => 1.0,

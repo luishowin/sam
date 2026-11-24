@@ -6,16 +6,20 @@
 //! validation and policy path. The microphone is an input method only.
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
 use adw::prelude::*;
+use gtk::gdk::prelude::TextureExtManual;
 use gtk::{gdk, glib, graphene};
 
 use sam_core::files::FileQuery;
+use sam_core::intent::{Intent, Source};
 use sam_core::policy::{self, Approved, CORE_LEVEL, Decision, Origin, Pending};
 use sam_core::rank::{Candidate, Kind};
+use sam_linux::color::Rgb;
 use sam_core::trouble::Trouble;
 use sam_linux::config::Config;
 use sam_linux::executor::Executor;
@@ -37,6 +41,9 @@ const GAP: i32 = 8;
 const ROWS: usize = 8;
 const ROW_HEIGHT: i32 = 44;
 const FILE_DELAY: Duration = Duration::from_millis(80);
+/// A single word waits this long before the dictionary is asked. Typing
+/// normally never touches it.
+const DEFINITION_DELAY: Duration = Duration::from_millis(250);
 const MIC_MARK: i32 = 16;
 
 const PLACEHOLDER: &str = "Search files, apps, settings or system";
@@ -58,6 +65,14 @@ pub struct Panel {
     timer_due: Cell<Option<u64>>,
     timer_id: RefCell<Option<String>>,
     timer_source: RefCell<Option<glib::SourceId>>,
+    detail_card: Surface,
+    detail_title: gtk::Label,
+    detail_body: gtk::Label,
+    detail_swatch: gtk::DrawingArea,
+    detail_copy: gtk::Button,
+    detail_text: RefCell<String>,
+    detail_color: Rc<RefCell<Option<gdk::RGBA>>>,
+    color_window: RefCell<Option<gtk::Window>>,
     list: gtk::ListBox,
     footer: gtk::Label,
     world: World,
@@ -66,6 +81,9 @@ pub struct Panel {
     generation: Cell<u64>,
     pending: RefCell<Option<(usize, Pending)>>,
     file_source: RefCell<Option<glib::SourceId>>,
+    definition_source: RefCell<Option<glib::SourceId>>,
+    definition: RefCell<Option<Candidate>>,
+    definition_cache: RefCell<HashMap<String, Option<Candidate>>>,
     voice: RefCell<Option<VoiceEngine>>,
     voice_model: PathBuf,
     voice_mode: String,
@@ -166,6 +184,71 @@ impl Panel {
         let timer_card = Surface::natural(&timer_content, SURFACE_WIDTH, CARD_RADIUS);
         timer_card.set_visible(false);
 
+        let detail_title = gtk::Label::builder()
+            .xalign(0.0)
+            .wrap(true)
+            .css_classes(["sam-detail-title"])
+            .build();
+        let detail_body = gtk::Label::builder()
+            .xalign(0.0)
+            .wrap(true)
+            .selectable(true)
+            .wrap_mode(gtk::pango::WrapMode::WordChar)
+            .css_classes(["sam-detail-body"])
+            .build();
+        let detail_color: Rc<RefCell<Option<gdk::RGBA>>> = Rc::new(RefCell::new(None));
+        let detail_swatch = gtk::DrawingArea::builder()
+            .width_request(44)
+            .height_request(44)
+            .halign(gtk::Align::Start)
+            .visible(false)
+            .css_classes(["sam-detail-swatch"])
+            .build();
+        {
+            let color = detail_color.clone();
+            detail_swatch.set_draw_func(move |_, cr, _, _| {
+                if let Some(color) = *color.borrow() {
+                    cr.set_source_rgba(
+                        f64::from(color.red()),
+                        f64::from(color.green()),
+                        f64::from(color.blue()),
+                        f64::from(color.alpha()),
+                    );
+                    let _ = cr.paint();
+                }
+            });
+        }
+        let detail_copy = gtk::Button::builder()
+            .label("Copy")
+            .halign(gtk::Align::Start)
+            .css_classes(["sam-detail-copy"])
+            .build();
+        // Long definitions scroll instead of growing the panel past the
+        // screen; the title, swatch and Copy stay put.
+        let detail_scroll = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .vscrollbar_policy(gtk::PolicyType::Automatic)
+            .propagate_natural_height(true)
+            .max_content_height(280)
+            .hexpand(true)
+            .child(&detail_body)
+            .build();
+        let detail_content = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(10)
+            .margin_top(20)
+            .margin_bottom(16)
+            .margin_start(20)
+            .margin_end(20)
+            .build();
+        detail_content.append(&detail_title);
+        detail_content.append(&detail_swatch);
+        detail_content.append(&detail_scroll);
+        detail_content.append(&detail_copy);
+        let detail_card = Surface::natural(&detail_content, SURFACE_WIDTH, CARD_RADIUS);
+        detail_card.follow_content(FRAME_HEIGHT - TOP - PILL_HEIGHT as i32 - GAP - 16);
+        detail_card.set_visible(false);
+
         let frame = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(GAP)
@@ -176,6 +259,7 @@ impl Panel {
         frame.append(&pill);
         frame.append(&card);
         frame.append(&timer_card);
+        frame.append(&detail_card);
         window.set_content(Some(&frame));
 
         let config = Config::load();
@@ -199,6 +283,14 @@ impl Panel {
             timer_due: Cell::new(None),
             timer_id: RefCell::new(None),
             timer_source: RefCell::new(None),
+            detail_card,
+            detail_title,
+            detail_body,
+            detail_swatch,
+            detail_copy,
+            detail_text: RefCell::new(String::new()),
+            detail_color,
+            color_window: RefCell::new(None),
             list,
             footer,
             world: World::new(),
@@ -207,6 +299,9 @@ impl Panel {
             generation: Cell::new(0),
             pending: RefCell::new(None),
             file_source: RefCell::new(None),
+            definition_source: RefCell::new(None),
+            definition: RefCell::new(None),
+            definition_cache: RefCell::new(HashMap::new()),
             voice: RefCell::new(voice),
             voice_model,
             voice_mode,
@@ -230,6 +325,18 @@ impl Panel {
         let p = panel.clone();
         panel.timer_button.connect_clicked(move |_| {
             p.timer_button_clicked();
+        });
+
+        let p = panel.clone();
+        panel.detail_copy.connect_clicked(move |button| {
+            let text = p.detail_text.borrow().clone();
+            if text.is_empty() {
+                return;
+            }
+            gtk::prelude::WidgetExt::display(&p.window)
+                .clipboard()
+                .set_text(&text);
+            button.set_label("Copied");
         });
 
         let p = panel.clone();
@@ -291,6 +398,9 @@ impl Panel {
             if p.timer_card.is_visible() && p.timer_due.get().is_some() {
                 return;
             }
+            if p.detail_card.is_visible() {
+                return;
+            }
             p.hide("focus");
         });
         panel.window.add_controller(focus);
@@ -350,18 +460,25 @@ impl Panel {
         self.pending_start.set(false);
         self.tab_held.set(false);
         self.entry.set_text("");
+        if let Some(source) = self.definition_source.borrow_mut().take() {
+            source.remove();
+        }
+        self.definition.replace(None);
         self.rows.borrow_mut().clear();
         self.pending.borrow_mut().take();
         self.clear_rows();
         self.card.set_visible(false);
         self.timer_card.set_visible(false);
+        self.detail_card.set_visible(false);
+        self.detail_text.replace(String::new());
+        self.detail_color.replace(None);
     }
 
     /// Whether a press at window coordinates lands on one of the visible
     /// surfaces. Everything else in the transparent window dismisses it.
     fn point_in_panel(&self, x: f64, y: f64) -> bool {
         let point = graphene::Point::new(x as f32, y as f32);
-        [&self.pill, &self.card, &self.timer_card]
+        [&self.pill, &self.card, &self.timer_card, &self.detail_card]
             .into_iter()
             .filter(|surface| surface.is_visible())
             .any(|surface| {
@@ -445,12 +562,194 @@ impl Panel {
         self.hide("timer-cancelled");
     }
 
+    // ---- detail card: definitions and colours ------------------------------
+
+    fn show_detail(self: &Rc<Self>, title: &str, body: &str, copy: &str, color: Option<Rgb>) {
+        self.detail_body.set_use_markup(false);
+        self.detail_body.set_label(body);
+        self.present_detail(title, copy, color);
+    }
+
+    fn show_detail_markup(
+        self: &Rc<Self>,
+        title: &str,
+        markup: &str,
+        copy: &str,
+        color: Option<Rgb>,
+    ) {
+        self.detail_body.set_use_markup(true);
+        self.detail_body.set_markup(markup);
+        self.present_detail(title, copy, color);
+    }
+
+    fn present_detail(&self, title: &str, copy: &str, color: Option<Rgb>) {
+        self.detail_title.set_label(title);
+        self.detail_text.replace(copy.to_owned());
+        self.detail_color.replace(color.map(|c| {
+            gdk::RGBA::new(
+                f32::from(c.r) / 255.0,
+                f32::from(c.g) / 255.0,
+                f32::from(c.b) / 255.0,
+                1.0,
+            )
+        }));
+        self.detail_swatch.set_visible(color.is_some());
+        self.detail_swatch.queue_draw();
+        self.detail_copy.set_label("Copy");
+        self.card.set_visible(false);
+        self.timer_card.set_visible(false);
+        self.detail_card.set_visible(true);
+        self.window.present();
+    }
+
+    fn show_dictionary(self: &Rc<Self>, word: &str) {
+        let entry = match sam_linux::dictionary::entry(word) {
+            Ok(entry) => entry,
+            Err(error) => {
+                self.say(&error);
+                return;
+            }
+        };
+        let title = if entry.hyphenated.is_empty() {
+            entry.word.clone()
+        } else {
+            entry.hyphenated.to_owned()
+        };
+        let plain = sam_linux::dictionary::render_plain(&entry);
+        let markup = dictionary_markup(&entry);
+        self.show_detail_markup(&title, &markup, &plain, None);
+    }
+
+    /// Ask the portal for one screenshot, then show it for a click.
+    fn start_color_pick(self: &Rc<Self>) {
+        self.card.set_visible(false);
+        self.detail_card.set_visible(false);
+        self.footer.set_label("Waiting for the screen capture…");
+        self.window.present();
+        let panel = self.clone();
+        sam_linux::screenshot::capture_async(move |result| match result {
+            Ok(path) => panel.pick_from_image(path),
+            Err(error) => {
+                panel.window.present();
+                panel.say(&error);
+            }
+        });
+    }
+
+    fn pick_from_image(self: &Rc<Self>, path: PathBuf) {
+        let texture = match gdk::Texture::from_filename(&path) {
+            Ok(texture) => texture,
+            Err(error) => {
+                let _ = std::fs::remove_file(&path);
+                self.say(&format!("the screenshot could not be read ({error})"));
+                return;
+            }
+        };
+        // The portal hands us a temporary file. Read it once, then remove it;
+        // the pixels live only in memory until the picker closes.
+        let _ = std::fs::remove_file(&path);
+
+        let window = gtk::Window::builder()
+            .title("Pick a colour")
+            .transient_for(&self.window)
+            .modal(true)
+            .default_width(960)
+            .default_height(640)
+            .build();
+        window.set_css_classes(&["sam-picker-window"]);
+
+        let hint = gtk::Label::builder()
+            .label("Click the colour you want · Esc cancels")
+            .css_classes(["sam-picker-hint"])
+            .build();
+        let picture = gtk::Picture::builder()
+            .paintable(&texture)
+            .content_fit(gtk::ContentFit::Contain)
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+        let content = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(8)
+            .margin_top(10)
+            .margin_bottom(10)
+            .margin_start(10)
+            .margin_end(10)
+            .build();
+        content.append(&hint);
+        content.append(&picture);
+        window.set_child(Some(&content));
+
+        // The controllers are owned by the window and its picture, so their
+        // closures must hold weak references: a strong one would make a
+        // window → controller → window cycle and leak the whole screenshot.
+        let click = gtk::GestureClick::new();
+        let panel = Rc::downgrade(self);
+        let picker = window.downgrade();
+        let view = picture.downgrade();
+        let image = texture.clone();
+        click.connect_pressed(move |_, _, x, y| {
+            let (Some(view), Some(picker)) = (view.upgrade(), picker.upgrade()) else {
+                return;
+            };
+            if let Some(color) = sample(&image, &view, x, y) {
+                picker.close();
+                if let Some(panel) = panel.upgrade() {
+                    panel.show_color(color);
+                }
+            }
+        });
+        picture.add_controller(click);
+
+        let keys = gtk::EventControllerKey::new();
+        let picker = window.downgrade();
+        keys.connect_key_pressed(move |_, key, _, _| {
+            if key == gdk::Key::Escape {
+                if let Some(picker) = picker.upgrade() {
+                    picker.close();
+                }
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        });
+        window.add_controller(keys);
+
+        {
+            let panel = Rc::downgrade(self);
+            window.connect_close_request(move |_| {
+                if let Some(panel) = panel.upgrade() {
+                    panel.color_window.replace(None);
+                    // A click closes the window just before showing the
+                    // colour, so only an unpicked close resets the footer.
+                    if !panel.detail_card.is_visible() {
+                        panel.footer.set_label("Colour pick cancelled");
+                    }
+                }
+                glib::Propagation::Proceed
+            });
+        }
+
+        self.color_window.replace(Some(window.clone()));
+        window.present();
+    }
+
+    fn show_color(self: &Rc<Self>, color: Rgb) {
+        let body = color.describe();
+        self.show_detail("Colour picked", &body, &body, Some(color));
+        self.footer.set_label("Copy keeps the hex, RGB and HSL values");
+    }
+
     // ---- searching ---------------------------------------------------------
 
     fn refresh(self: &Rc<Self>, text: String) {
         let generation = self.generation.get().wrapping_add(1);
         self.generation.set(generation);
         self.pending.borrow_mut().take();
+        if let Some(source) = self.definition_source.borrow_mut().take() {
+            source.remove();
+        }
+        self.definition.replace(None);
         self.footer.set_label(FOOTER_IDLE);
 
         if text.trim().is_empty() {
@@ -463,6 +762,7 @@ impl Panel {
             return;
         }
         self.timer_card.set_visible(false);
+        self.detail_card.set_visible(false);
 
         let results = self.world.search(&text);
         let mut candidates = self.world.panel_rows(&results, ROWS * 2);
@@ -489,6 +789,64 @@ impl Panel {
             });
             *self.file_source.borrow_mut() = Some(source);
         }
+        self.schedule_definition(&text, generation);
+    }
+
+    /// Ask the dictionary only after a pause on one ordinary word.
+    fn schedule_definition(self: &Rc<Self>, text: &str, generation: u64) {
+        let Some(word) = single_word(text) else {
+            return;
+        };
+        let word = word.to_owned();
+        let panel = self.clone();
+        let source = glib::timeout_add_local_once(DEFINITION_DELAY, move || {
+            panel.definition_source.borrow_mut().take();
+            if panel.generation.get() != generation {
+                return;
+            }
+            if !single_word(&panel.entry.text()).is_some_and(|now| now.eq_ignore_ascii_case(&word))
+            {
+                return;
+            }
+            let Some(row) = panel.definition_row(&word) else {
+                return;
+            };
+            panel.definition.replace(Some(row));
+            let rows: Vec<Candidate> = panel
+                .rows
+                .borrow()
+                .iter()
+                .filter(|candidate| candidate.kind != Kind::Definition)
+                .cloned()
+                .collect();
+            panel.render(rows);
+        });
+        *self.definition_source.borrow_mut() = Some(source);
+    }
+
+    /// Build (or reuse) the preview row. The cache keeps backspacing and
+    /// retyping from doing the same binary search again.
+    fn definition_row(&self, word: &str) -> Option<Candidate> {
+        let key = word.to_lowercase();
+        if let Some(cached) = self.definition_cache.borrow().get(&key) {
+            return cached.clone();
+        }
+        let row = sam_linux::dictionary::preview(&key).map(|preview| Candidate {
+            title: word.to_owned(),
+            subtitle: format!("{} · {}", preview.pos, preview.definition),
+            kind: Kind::Definition,
+            icon: "accessories-dictionary-symbolic".into(),
+            score: 0.0,
+            key: format!("definition:{}", preview.word),
+            intent: Intent::new("dictionary.lookup", Source::Provider).arg("word", word),
+            alt: None,
+        });
+        let mut cache = self.definition_cache.borrow_mut();
+        if cache.len() >= 96 {
+            cache.clear();
+        }
+        cache.insert(key, row.clone());
+        row
     }
 
     fn search_files(self: &Rc<Self>, query: FileQuery, generation: u64) {
@@ -510,9 +868,8 @@ impl Panel {
         }
     }
 
-    fn render(self: &Rc<Self>, mut candidates: Vec<Candidate>) {
-        candidates.sort_by(|a, b| b.score.total_cmp(&a.score));
-        candidates.truncate(ROWS);
+    fn render(self: &Rc<Self>, candidates: Vec<Candidate>) {
+        let candidates = arrange(candidates, self.definition.borrow().clone());
         self.rows.replace(candidates.clone());
         self.clear_rows();
 
@@ -552,9 +909,10 @@ impl Panel {
         // The deterministic engine only submits to the model where it has
         // no confident row of its own: a file-search fallback, a web
         // handoff, or nothing at all. Typing itself never waits for a model.
-        let model_origin = candidate.key.starts_with("model:")
-            || candidate.score < sam_core::engine::WEAK
-            || matches!(candidate.kind, Kind::Search | Kind::Site);
+        let model_origin = candidate.kind != Kind::Definition
+            && (candidate.key.starts_with("model:")
+                || candidate.score < sam_core::engine::WEAK
+                || matches!(candidate.kind, Kind::Search | Kind::Site));
         if model_origin && !candidate.key.starts_with("model:") {
             let text = self.entry.text().to_string();
             match self.world.needle_reply(&text) {
@@ -614,6 +972,8 @@ impl Panel {
                     | "timer.cancel"
                     | "timer.list"
                     | "alarm.list"
+                    | "dictionary.lookup"
+                    | "color.pick"
                     | "help.show"
                     | "info.copy"
                     | "window.list"
@@ -627,6 +987,16 @@ impl Panel {
         }
         // Panel-owned results never reach the OS executor.
         match action.as_str() {
+            "dictionary.lookup" => {
+                if let Some(word) = approved.text("word") {
+                    self.show_dictionary(word);
+                }
+                return;
+            }
+            "color.pick" => {
+                self.start_color_pick();
+                return;
+            }
             "help.show" => {
                 let text = sam_core::help::text().to_owned();
                 gtk::prelude::WidgetExt::display(&self.window)
@@ -1015,6 +1385,158 @@ impl Panel {
     }
 }
 
+/// Pango markup for a dictionary entry, in the spirit of the iOS card.
+fn dictionary_markup(entry: &sam_linux::dictionary::Entry) -> String {
+    use std::fmt::Write as _;
+
+    let escape = |text: &str| glib::markup_escape_text(text).to_string();
+    let mut out = String::new();
+    if !entry.pronunciation.is_empty() {
+        let _ = write!(
+            out,
+            "<span size=\"large\" style=\"italic\">{}</span>\n\n",
+            escape(entry.pronunciation)
+        );
+    }
+    let mut pos = "";
+    let mut number = 0;
+    for sense in &entry.senses {
+        if sense.pos != pos {
+            if !pos.is_empty() {
+                out.push('\n');
+            }
+            let _ = write!(
+                out,
+                "<span weight=\"bold\" size=\"medium\">{}</span>\n",
+                escape(sense.pos)
+            );
+            pos = sense.pos;
+            number = 0;
+        }
+        number += 1;
+        let _ = write!(
+            out,
+            "<b>{number}</b> {}\n",
+            escape(sense.definition)
+        );
+        if !sense.example.is_empty() {
+            let _ = write!(
+                out,
+                "<span style=\"italic\" alpha=\"72%\">e.g. {}</span>\n",
+                escape(sense.example)
+            );
+        }
+        if !sense.synonyms.is_empty() {
+            let _ = write!(
+                out,
+                "<span size=\"small\"><b>SYNONYMS</b> {}</span>\n",
+                escape(sense.synonyms)
+            );
+        }
+        if !sense.antonyms.is_empty() {
+            let _ = write!(
+                out,
+                "<span size=\"small\"><b>ANTONYMS</b> {}</span>\n",
+                escape(sense.antonyms)
+            );
+        }
+    }
+    if !entry.origin.is_empty() {
+        out.push('\n');
+        let _ = write!(
+            out,
+            "<span size=\"small\" weight=\"bold\">ORIGIN</span>\n<span alpha=\"72%\">{}</span>\n",
+            escape(entry.origin)
+        );
+    }
+    out.trim_end().to_owned()
+}
+
+/// Order the visible rows. A definition is reserved a slot and pinned after
+/// real results (and commands), but above a lone generic file-search row.
+fn arrange(mut candidates: Vec<Candidate>, definition: Option<Candidate>) -> Vec<Candidate> {
+    candidates.retain(|candidate| candidate.kind != Kind::Definition);
+    candidates.sort_by(|a, b| b.score.total_cmp(&a.score));
+    let room = if definition.is_some() { ROWS - 1 } else { ROWS };
+    candidates.truncate(room);
+    if let Some(definition) = definition {
+        let has_results = candidates.iter().any(|candidate| candidate.kind != Kind::Search);
+        let at = if has_results {
+            candidates
+                .iter()
+                .position(|candidate| candidate.kind == Kind::Search)
+                .map_or(candidates.len(), |search| search + 1)
+        } else {
+            0
+        };
+        candidates.insert(at.min(candidates.len()), definition);
+    }
+    candidates
+}
+
+/// The one ordinary word worth asking the dictionary about.
+fn single_word(text: &str) -> Option<&str> {
+    let word = text.trim();
+    if word.chars().count() < 2 || word.chars().any(char::is_whitespace) {
+        return None;
+    }
+    word.chars()
+        .all(|c| c.is_alphabetic() || c == '-' || c == '\'' || c == '’')
+        .then_some(word)
+}
+
+/// Read one pixel from a `ContentFit::Contain` picture at a click.
+///
+/// The gesture coordinates are relative to the picture widget, so the same
+/// aspect-fit arithmetic GTK uses maps them back to texture pixels.
+fn sample(texture: &gdk::Texture, picture: &gtk::Picture, x: f64, y: f64) -> Option<Rgb> {
+    let width = texture.width();
+    let height = texture.height();
+    if width <= 0 || height <= 0 {
+        return None;
+    }
+    let view_width = f64::from(picture.width());
+    let view_height = f64::from(picture.height());
+    if view_width <= 0.0 || view_height <= 0.0 {
+        return None;
+    }
+    let scale = (view_width / f64::from(width)).min(view_height / f64::from(height));
+    let drawn_width = f64::from(width) * scale;
+    let drawn_height = f64::from(height) * scale;
+    let left = (view_width - drawn_width) / 2.0;
+    let top = (view_height - drawn_height) / 2.0;
+    let column = ((x - left) / scale).floor() as i32;
+    let row = ((y - top) / scale).floor() as i32;
+    if column < 0 || row < 0 || column >= width || row >= height {
+        return None;
+    }
+
+    let stride = width as usize * 4;
+    let mut pixels = vec![0u8; stride * height as usize];
+    texture.download(&mut pixels, stride);
+    let index = row as usize * stride + column as usize * 4;
+    // gdk_texture_download returns CAIRO_FORMAT_ARGB32 in native byte order:
+    // little-endian B, G, R, A. Screenshots are opaque, but un-premultiply
+    // defensively so a transparent pixel does not come back too dark.
+    let (blue, green, red, alpha) = (
+        pixels[index],
+        pixels[index + 1],
+        pixels[index + 2],
+        pixels[index + 3],
+    );
+    if alpha == 0 {
+        return Some(Rgb::new(0, 0, 0));
+    }
+    let un = |channel: u8| {
+        if alpha == 255 {
+            channel
+        } else {
+            ((u16::from(channel) * 255 + u16::from(alpha) / 2) / u16::from(alpha)).min(255) as u8
+        }
+    };
+    Some(Rgb::new(un(red), un(green), un(blue)))
+}
+
 fn spawn_voice(threads: usize, model: Option<PathBuf>) -> Option<VoiceEngine> {
     let mut config = VoiceConfig::default();
     config.model = model;
@@ -1043,3 +1565,99 @@ fn format_remaining(seconds: u64) -> String {
 
 /// The little bits the panel needs to keep alive.
 pub fn keep(_: &Rc<Panel>) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(title: &str, kind: Kind, score: f32) -> Candidate {
+        Candidate {
+            title: title.to_owned(),
+            subtitle: String::new(),
+            kind,
+            icon: String::new(),
+            score,
+            key: title.to_owned(),
+            intent: Intent::new("help.show", Source::Provider),
+            alt: None,
+        }
+    }
+
+    fn titles(rows: &[Candidate]) -> Vec<&str> {
+        rows.iter().map(|row| row.title.as_str()).collect()
+    }
+
+    #[test]
+    fn only_plain_single_words_trigger_a_definition() {
+        assert_eq!(single_word("serendipity"), Some("serendipity"));
+        assert_eq!(single_word("well-being"), Some("well-being"));
+        assert_eq!(single_word("o'clock"), Some("o'clock"));
+        assert_eq!(single_word("two words"), None);
+        assert_eq!(single_word("find serendipity"), None);
+        assert_eq!(single_word("a"), None);
+        assert_eq!(single_word("C++"), None);
+        assert_eq!(single_word("~/notes"), None);
+        assert_eq!(single_word("42"), None);
+    }
+
+    #[test]
+    fn definition_sits_at_the_bottom_when_results_exist() {
+        let rows = arrange(
+            vec![
+                row("search", Kind::Search, 0.05),
+                row("file", Kind::File, 0.9),
+            ],
+            Some(row("meaning", Kind::Definition, 0.0)),
+        );
+        assert_eq!(titles(&rows), ["file", "search", "meaning"]);
+    }
+
+    #[test]
+    fn definition_leads_when_only_the_search_fallback_exists() {
+        let rows = arrange(
+            vec![row("search", Kind::Search, 0.05)],
+            Some(row("meaning", Kind::Definition, 0.0)),
+        );
+        assert_eq!(titles(&rows), ["meaning", "search"]);
+    }
+
+    #[test]
+    fn definition_stays_below_a_strong_command() {
+        let rows = arrange(
+            vec![row("command", Kind::Command, 0.97)],
+            Some(row("meaning", Kind::Definition, 0.0)),
+        );
+        assert_eq!(titles(&rows), ["command", "meaning"]);
+    }
+
+    #[test]
+    fn dictionary_markup_is_valid_pango() {
+        let entry = sam_linux::dictionary::Entry {
+            word: "colour".into(),
+            pronunciation: "/ˈkʌl.ə(ɹ)/",
+            hyphenated: "col·our".into(),
+            origin: "From Middle English colour, from Anglo-Norman colur.",
+            senses: vec![sam_linux::dictionary::Sense {
+                pos: "noun",
+                definition: "The spectral composition of visible light.",
+                example: "Humans and birds can perceive colour.",
+                synonyms: "hue, shade",
+                antonyms: "achromia",
+            }],
+        };
+        let markup = dictionary_markup(&entry);
+        gtk::pango::parse_markup(&markup, '\0')
+            .expect("the dictionary card is valid markup");
+    }
+
+    #[test]
+    fn a_definition_never_displaces_a_result_into_a_ninth_row() {
+        let mut rows: Vec<Candidate> = (0..8)
+            .map(|i| row(&format!("file {i}"), Kind::File, 0.9 - i as f32 * 0.01))
+            .collect();
+        rows.push(row("duplicate", Kind::Definition, 0.0));
+        let rows = arrange(rows, Some(row("meaning", Kind::Definition, 0.0)));
+        assert_eq!(rows.len(), ROWS);
+        assert_eq!(rows.last().unwrap().title, "meaning");
+    }
+}

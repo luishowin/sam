@@ -141,3 +141,37 @@ entry.sam-entry selection {
   border: 1px solid alpha(currentColor, 0.22);
   box-shadow: none;
 }
+
+/* The detail card: a definition, or one picked colour. */
+.sam-detail-title {
+  font-size: 1.15em;
+  font-weight: 600;
+}
+
+.sam-detail-body {
+  font-size: 0.95em;
+  opacity: 0.85;
+}
+
+.sam-detail-swatch {
+  border-radius: 10px;
+  border: 1px solid alpha(currentColor, 0.25);
+}
+
+.sam-detail-copy {
+  min-height: 28px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background-color: alpha(currentColor, 0.08);
+  border: 1px solid alpha(currentColor, 0.22);
+  box-shadow: none;
+}
+
+window.sam-picker-window {
+  background-color: #0a0d11;
+}
+
+.sam-picker-hint {
+  font-size: 0.9em;
+  opacity: 0.7;
+}

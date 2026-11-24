@@ -124,6 +124,26 @@ Window control runs through a minimal GNOME Shell extension over the session bus
 
 See [`window-control.md`](window-control.md).
 
+## Screen colour picker
+
+The colour picker asks `org.freedesktop.portal.Screenshot` for one capture; it does not read the
+framebuffer directly, record the screen, poll or keep a screenshot.
+
+- The portal, and on first use the person, approves the capture. Sam cannot bypass that dialog.
+- The portal returns a temporary PNG. Sam loads it, reads the one pixel the person clicks,
+  shows the hex/RGB/HSL values, and deletes the file immediately. Pixels live only in memory
+  while the picker window is open.
+- `color.pick` is low-risk but not on the model's automatic allowlist: a person choosing the row
+  may run it, a model proposal asks for confirmation.
+- The result is a colour value, not an image. Nothing about the screen is logged or cached.
+
+## Dictionary data
+
+The offline dictionary is bundled and memory-mapped; it never makes a network request. Definitions,
+examples, synonyms, antonyms, UK pronunciation, hyphenation and etymology come from English
+Wiktionary via Wiktextract and are licensed CC BY-SA 3.0. The headword list is the WordNet 3.0
+lemma list (Princeton licence). Both licences ship with the package.
+
 ## Fixed actions
 
 The Fedora panel is the caller for its own result actions. Every action is validated against
@@ -196,6 +216,7 @@ and can be cleared by the user.
 | Probe reads secrets or leaves the allowlist | Executable and path allowlists, secret deny list, redaction |
 | Probe hangs or floods output | Hard timeout, output cap, process kill, worker thread |
 | Window target is ambiguous | Resolve then clarify; never act on a guess |
+| Screen capture exposes the desktop | One-shot portal consent, one pixel read, temp file deleted, no recording or retention; model proposals confirm |
 | `window.close` loses unsaved work | Destructive tier plus always-confirm; no spoken auto-approval |
 | Tampered or stale model artifact | Hash check, schema fingerprint, no silent update |
 | Local model leaks to the network | Sidecar on a Unix socket; no network configuration; no egress |

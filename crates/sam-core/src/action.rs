@@ -695,6 +695,26 @@ pub const CORE_ACTIONS: &[ActionSpec] = &[
         Never,
         Os,
     ),
+    spec(
+        "dictionary.lookup",
+        "Define",
+        "Look up the UK English definition, pronunciation and origin of a word offline.",
+        &[required("word", Kind::Text)],
+        Read,
+        Never,
+        Os,
+    ),
+    // A screen capture is read-only but private: a person picking the row
+    // may run it, a model's proposal asks first. The portal asks too.
+    spec(
+        "color.pick",
+        "Pick a colour",
+        "Take one screenshot and pick a colour from it. Never runs in the background.",
+        &[],
+        LowRisk,
+        Never,
+        Panel,
+    ),
     // `/help` answers locally: static text, no provider, no network.
     spec(
         "help.show",
@@ -984,6 +1004,8 @@ mod tests {
             intent("display.brightness_set").arg("level", 35.0),
             intent("clipboard.copy").arg("text", "714"),
             intent("clipboard.copy").arg("text", "a".repeat(20_000)),
+            intent("dictionary.lookup").arg("word", "serendipity"),
+            intent("color.pick"),
         ] {
             let shown = good.to_string();
             assert!(r.validate(good).is_ok(), "{shown}");
@@ -1025,6 +1047,7 @@ mod tests {
             (intent("audio.volume_set").arg("level", f64::NAN), "between"),
             (intent("audio.volume_set").arg("level", "loud"), "number"),
             (intent("clipboard.copy").arg("text", "   "), "empty"),
+            (intent("dictionary.lookup"), "needs word"),
         ];
         for (bad, why) in cases {
             let shown = bad.to_string();
@@ -1043,6 +1066,11 @@ mod tests {
         assert_eq!(perm("help.show"), Permission::Read);
         assert_eq!(perm("search.files"), Permission::Read);
         assert_eq!(perm("app.launch"), Permission::LowRisk);
+        assert_eq!(perm("dictionary.lookup"), Permission::Read);
+        assert_eq!(r.get("dictionary.lookup").unwrap().handler, Handler::Os);
+        assert_eq!(perm("color.pick"), Permission::LowRisk);
+        assert_eq!(r.get("color.pick").unwrap().handler, Handler::Panel);
+        assert_eq!(conf("color.pick"), Confirmation::Never);
         assert_eq!(r.get("clipboard.copy").unwrap().handler, Handler::Panel);
         assert_eq!(r.get("help.show").unwrap().handler, Handler::Panel);
         // The only destructive action is window.close, and it always asks.

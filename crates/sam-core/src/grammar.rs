@@ -16,6 +16,8 @@ const CORE_GRAMMAR: &str = include_str!("../../../data/intents.toml");
 pub enum SlotKind {
     /// One or more words, to the end of the input.
     Rest,
+    /// Exactly one word, for patterns with text after the slot.
+    Word,
     /// A place word; captures the place ID.
     Place,
     /// 0–100, optionally followed by `%`.
@@ -142,6 +144,7 @@ impl Pattern {
                 let (name, kind) = inner.split_once(':').unwrap_or((&inner, "rest"));
                 let kind = match kind {
                     "rest" => SlotKind::Rest,
+                    "word" => SlotKind::Word,
                     "place" => SlotKind::Place,
                     "level" => SlotKind::Level,
                     "kelvin" => SlotKind::Kelvin,
@@ -232,6 +235,7 @@ impl Pattern {
                         captures.insert(name.clone(), Value::Text(words.join(" ")));
                         return true;
                     }
+                    SlotKind::Word => words.first().map(|w| Value::Text(w.clone())),
                     SlotKind::Place => words.first().and_then(|w| place_id(w)).map(Value::from),
                     SlotKind::Level => words.first().and_then(|w| level(w)).map(Value::Number),
                     SlotKind::Kelvin => words.first().and_then(|w| kelvin(w)).map(Value::Number),
@@ -422,7 +426,7 @@ impl Grammar {
                 for e in &p.elements {
                     if let Element::Slot { name, kind } = e {
                         let sample = match kind {
-                            SlotKind::Rest => Value::from("sample"),
+                            SlotKind::Rest | SlotKind::Word => Value::from("sample"),
                             SlotKind::Place => Value::from("downloads"),
                             SlotKind::Level => Value::Number(50.0),
                             SlotKind::Kelvin => Value::Number(3000.0),
@@ -518,6 +522,16 @@ mod tests {
                 "open note groceries",
                 r#"notes.open {name: "groceries"}"#,
             ),
+            (
+                "define serendipity",
+                r#"dictionary.lookup {word: "serendipity"}"#,
+            ),
+            (
+                "what does serendipity mean",
+                r#"dictionary.lookup {word: "serendipity"}"#,
+            ),
+            ("colour picker", "color.pick"),
+            ("pick a colour", "color.pick"),
             ("boot history", "probe.boot_history"),
             (
                 "when did this computer last boot",
@@ -593,6 +607,14 @@ mod tests {
         assert!(p.matches(&w("lock this computer now")).is_some());
         assert!(p.matches(&w("lock")).is_none());
         assert!(p.matches(&w("lock now please")).is_none());
+
+        let one = Pattern::compile("what does {word:word} mean").unwrap();
+        assert_eq!(
+            one.matches(&w("what does serendipity mean")).unwrap()["word"],
+            Value::from("serendipity")
+        );
+        assert!(one.matches(&w("what does mean")).is_none());
+        assert!(one.matches(&w("what does a b mean")).is_none());
 
         let v = Pattern::compile("set volume [to] {level:level}").unwrap();
         assert_eq!(v.matches(&w("set volume 101%")), None);

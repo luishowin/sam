@@ -642,6 +642,39 @@ patterns = [
   "console",
 ]
 
+# ── Dictionary and colour ─────────────────────────────────────────────────
+
+[[intent]]
+action = "dictionary.lookup"
+title = "Define"
+subtitle = "Offline UK English"
+icon = "accessories-dictionary-symbolic"
+keywords = ["dictionary", "definition", "define", "meaning"]
+patterns = [
+  "define {word:rest}",
+  "definition of {word:rest}",
+  "definition {word:rest}",
+  "what does {word:word} mean",
+  "what is meaning of {word:rest}",
+  "meaning of {word:rest}",
+  "look up definition of {word:rest}",
+  "dictionary {word:rest}",
+]
+
+[[intent]]
+action = "color.pick"
+title = "Pick a Colour"
+subtitle = "One screenshot, then pick a pixel"
+icon = "color-select-symbolic"
+keywords = ["color picker", "colour picker", "eyedropper", "pick color"]
+patterns = [
+  "(pick|choose|grab|sample) (color|colour) [from screen]",
+  "screen (color|colour) picker",
+  "(color|colour) picker",
+  "eye dropper",
+  "eyedropper",
+]
+
 # ── Timers and alarms ─────────────────────────────────────────────────────
 
 [[intent]]

@@ -29,6 +29,8 @@ the model proposes a typed call, and deterministic code validates, confirms and 
 - [Model tiers](#model-tiers)
 - [Window control](#window-control)
 - [Investigation](#investigation)
+- [Dictionary](#dictionary)
+- [Colour picker](#colour-picker)
 - [Registry-driven architecture](#registry-driven-architecture)
 - [Embeddings and lexical retrieval](#embeddings-and-lexical-retrieval)
 - [Handlers and response templates](#handlers-and-response-templates)
@@ -270,6 +272,28 @@ allowlisted roots as a fallback. See [docs/investigation.md](docs/investigation.
 The pipeline is described in more detail in [docs/architecture.md](docs/architecture.md) and
 [docs/retrieval-design.md](docs/retrieval-design.md).
 
+## Dictionary
+
+Sam bundles an offline UK-English dictionary. After a short pause on a single word, the panel
+adds a preview row with the first meaning. If files or a command matched, the definition sits at
+the bottom; if only the generic file-search row exists, it leads. Clicking it opens a card with
+UK pronunciation, up to six senses per part of speech, examples, synonyms, antonyms and
+etymology.
+
+The dictionary is never loaded at startup or during ordinary search. It is memory-mapped on the
+first preview, and pronunciation and etymology are read only when the detail card opens.
+Definitions, pronunciation and etymology come from Wiktionary (CC BY-SA 3.0); the headword list
+comes from WordNet. See [docs/dictionary.md](docs/dictionary.md).
+
+## Colour picker
+
+**Pick a Colour** takes one screenshot through `org.freedesktop.portal.Screenshot`, shows it in a
+preview window, and reports the hex, RGB and HSL values of the pixel the person clicks. The
+temporary capture is deleted immediately; Sam never records or retains the screen.
+
+A person picking the row may run it; a model proposal asks first, and the portal asks as well.
+See [docs/colour-picker.md](docs/colour-picker.md).
+
 ## Registry-driven architecture
 
 The registry is Sam's most important component. Each canonical capability appears once and
@@ -502,6 +526,8 @@ See [docs/security-and-privacy.md](docs/security-and-privacy.md).
 - a hand-authored registry covering apps, files, folders, settings, live system state,
   hardware, networking, brightness and display controls;
 - push-to-talk voice (hold Tab or the microphone), immediate safe execution and a live timer card;
+- an offline UK-English dictionary with an automatic preview row and a rich detail card;
+- a one-shot screen colour picker through the desktop portal;
 - a terminal configuration menu (`sam config`) and a Unix-socket JSON API;
 - unit tests, live-source checks, a benchmark command and an RPM build.
 

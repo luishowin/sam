@@ -10,6 +10,7 @@ cd "$(dirname "$0")/.."
 app_id=io.github.luishowin.Sam
 bin_dir="$HOME/.local/bin"
 data_dir="${XDG_DATA_HOME:-$HOME/.local/share}"
+dict_dir="$data_dir/sam/dictionary"
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 files=(
   "$bin_dir/sam"
@@ -18,6 +19,14 @@ files=(
   "$data_dir/dbus-1/services/$app_id.service"
   "$unit_dir/$app_id.service"
   "$data_dir/icons/hicolor/512x512/apps/$app_id.png"
+  "$dict_dir/dictionary.dat"
+  "$dict_dir/dictionary.idx"
+  "$dict_dir/sounds.dat"
+  "$dict_dir/sounds.idx"
+  "$dict_dir/origin.dat"
+  "$dict_dir/origin.idx"
+  "$dict_dir/LICENSE.wordnet"
+  "$dict_dir/LICENSE.wiktionary"
 )
 
 # dbus-broker does not watch its service directories.
@@ -36,7 +45,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   exit 0
 fi
 
-cargo build --release --locked
+cargo build --release --locked -p sam -p sam-voice
 
 install -Dm755 target/release/sam "$bin_dir/sam"
 install -Dm755 target/release/sam-voice "$bin_dir/sam-voice"
@@ -50,6 +59,9 @@ install -Dm644 "data/icons/hicolor/512x512/apps/$app_id.png" \
   "$data_dir/icons/hicolor/512x512/apps/$app_id.png"
 install -Dm644 "data/icons/hicolor/scalable/apps/$app_id.svg" \
   "$data_dir/icons/hicolor/scalable/apps/$app_id.svg"
+install -d "$dict_dir"
+install -m644 data/dictionary/*.dat data/dictionary/*.idx "$dict_dir/"
+install -m644 data/dictionary/LICENSE.* "$dict_dir/"
 # Without an index, gtk-update-icon-cache refuses and GNOME keeps reading
 # the stale cache (which hid the new icon); then rebuild the cache.
 install -Dm644 data/icons/hicolor/index.theme "$data_dir/icons/hicolor/index.theme"

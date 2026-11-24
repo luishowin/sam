@@ -136,6 +136,8 @@ impl Executor {
             "clock.open" => launch::app("org.gnome.clocks.desktop", &[], ctx)
                 .map(|()| "Opened Clocks".into()),
             "notes.open" => open_notes(a.text("name"), ctx),
+            "dictionary.lookup" => crate::dictionary::lookup(arg(a, "word")?)
+                .map_err(ExecError),
             "system.lock" => system::lock(),
             "system.suspend" => system::suspend(),
             "session.logout" => system::logout(),

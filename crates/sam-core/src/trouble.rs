@@ -229,6 +229,8 @@ pub fn what(intent: &Intent) -> String {
         "help.show" => "show the help",
         "ask.question" => "ask that",
         "weather.show" => "get the weather",
+        "dictionary.lookup" => "look that word up",
+        "color.pick" => "pick a colour",
         "conversation.resume" => "open that in OpenCode",
         "voice.listen" => "listen",
         _ => "do that",

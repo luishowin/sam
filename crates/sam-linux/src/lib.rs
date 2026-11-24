@@ -4,7 +4,9 @@
 //! reads.
 
 pub mod apps;
+pub mod color;
 pub mod config;
+pub mod dictionary;
 pub mod executor;
 pub mod files;
 pub mod host;
@@ -14,6 +16,7 @@ pub mod log;
 pub mod paths;
 pub mod probes;
 pub mod projects;
+pub mod screenshot;
 pub mod setup;
 pub mod system;
 pub mod timers;

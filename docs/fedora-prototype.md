@@ -70,6 +70,18 @@ There is no `>command` path, no file deletion, no app scripting and no
 arbitrary shell. Every action is a registry entry with typed arguments and a
 fixed handler.
 
+## Dictionary and colour
+
+The panel also carries two local utilities:
+
+- an offline UK-English dictionary. A short pause on one word adds a preview row; clicking it
+  opens pronunciation, definitions, examples, synonyms/antonyms and etymology. The data is
+  memory-mapped lazily and is not touched by ordinary searches.
+- a one-shot screen colour picker. It asks `org.freedesktop.portal.Screenshot` for one capture,
+  reads the pixel the person clicks, reports hex/RGB/HSL and deletes the temporary image.
+
+See [`dictionary.md`](dictionary.md) and [`colour-picker.md`](colour-picker.md).
+
 Timers and alarms use transient systemd user timers plus
 `~/.local/state/sam/timers.json`. They are user-requested state, not personal
 memory. The notification is sent by `sam notify <id>`.

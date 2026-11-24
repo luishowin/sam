@@ -143,7 +143,9 @@ are already separate processes for isolation and unload, not because of scale.
 - No open-ended planning or multi-step tool use. Tier 3 may run at most three fixed read-only
   probes in one turn, then summarise once.
 - No model-written shell command, ever.
-- No screenshots, input injection or arbitrary window control; only the registered methods.
+- No screen recording, input injection or arbitrary window control. The one exception is the
+  colour picker: it asks `org.freedesktop.portal.Screenshot` for a single capture, reads one
+  pixel the person clicks, and deletes the file. It never records, polls or keeps a screenshot.
 - No conversational memory, user profile or personalisation.
 - No autonomous background actions or retries.
 - No web browsing or external API calls from the Sam process; the browser handoff is the

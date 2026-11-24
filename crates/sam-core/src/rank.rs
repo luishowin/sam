@@ -13,6 +13,8 @@ pub enum Kind {
     Conversion,
     Path,
     Command,
+    /// An offline dictionary meaning.
+    Definition,
     /// A live answer about this computer.
     Info,
     /// "Ask Sam" (§15).
@@ -37,6 +39,7 @@ impl Kind {
             Kind::Conversion => "Conversion",
             Kind::Path => "Path",
             Kind::Command => "Command",
+            Kind::Definition => "Definition",
             Kind::Info => "Answer",
             Kind::Answer => "Ask",
             Kind::Help => "Help",

@@ -6,7 +6,7 @@
 %global app_id io.github.luishowin.Sam
 
 Name:           sam
-Version:        0.2.0
+Version:        0.4.0
 Release:        1%{?dist}
 Summary:        Search execution engine for this computer
 License:        MIT
@@ -29,6 +29,8 @@ BuildRequires:  desktop-file-utils
 Requires:       glib2
 Requires:       wireplumber
 Requires:       libnotify
+Requires:       xdg-desktop-portal
+Recommends:     xdg-desktop-portal-gnome
 Recommends:     localsearch
 Recommends:     ptyxis
 Recommends:     bluez
@@ -79,11 +81,16 @@ install -Dm0644 data/icons/hicolor/512x512/apps/%{app_id}.png \
     %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{app_id}.png
 install -Dm0644 data/icons/hicolor/scalable/apps/%{app_id}.svg \
     %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
+install -d %{buildroot}%{_datadir}/sam/dictionary
+install -m0644 data/dictionary/*.dat data/dictionary/*.idx \
+    %{buildroot}%{_datadir}/sam/dictionary/
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 
 %files
 %license LICENSE
-%doc README.md docs/fedora-prototype.md docs/migration-from-ida.md docs/gnome-limitations.md docs/design/SPEECH_GUIDE.md
+%license data/dictionary/LICENSE.wordnet
+%license data/dictionary/LICENSE.wiktionary
+%doc README.md data/dictionary/README.md docs/fedora-prototype.md docs/migration-from-ida.md docs/gnome-limitations.md docs/design/SPEECH_GUIDE.md
 %{_bindir}/sam
 %{_bindir}/sam-voice
 %{_datadir}/applications/%{app_id}.desktop
@@ -91,8 +98,15 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_userunitdir}/%{app_id}.service
 %{_datadir}/icons/hicolor/512x512/apps/%{app_id}.png
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
+%{_datadir}/sam/dictionary/
 
 %changelog
+* Tue Nov 24 2026 Luis Howin Maina <howin329@gmail.com> - 0.4.0-1
+- Offline UK English dictionary from a bundled Wiktionary extract, with
+  definitions, examples, synonyms, antonyms, pronunciation and etymology.
+- Screen colour picker through the one-shot screenshot portal.
+- Requires xdg-desktop-portal; recommends the GNOME backend.
+
 * Sat Nov 07 2026 Luis Howin Maina <howin329@gmail.com> - 0.2.0-1
 - Local Needle sidecar, candidate retrieval and model-origin policy.
 - Window control through the narrow GNOME Shell extension.
